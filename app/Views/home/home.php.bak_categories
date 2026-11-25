@@ -1,0 +1,73 @@
+<?php
+/**
+ * @var array $allowed_modules
+ * @var array $dashboard
+ */
+?>
+<?= view('partial/header') ?>
+<script type="text/javascript">
+    dialog_support.init("a.modal-dlg");
+</script>
+<h3 class="text-center"><?= lang('Common.welcome_message') ?></h3>
+<style>
+    #dashboard_widgets {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 15px;
+        margin: 20px auto;
+        max-width: 1100px;
+        padding: 0 15px;
+    }
+    .dash-card { background: #2c3e50; border-radius: 6px; padding: 15px 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .dash-card .dash-value { font-size: 26px; font-weight: bold; color: #fff; }
+    .dash-card .dash-label { font-size: 11px; color: #bbb; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .dash-card.warning .dash-value { color: #f0ad4e; }
+    .dash-card.danger .dash-value { color: #d9534f; }
+    .dash-card.success .dash-value { color: #5cb85c; }
+    @media (max-width: 900px) {
+        #dashboard_widgets { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+<div id="dashboard_widgets">
+    <div class="dash-card success">
+        <div class="dash-value"><?= to_currency($dashboard['today_sales_total']) ?></div>
+        <div class="dash-label">Today's Sales (<?= (int)$dashboard['today_sales_count'] ?> txns)</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-value"><?= (int)$dashboard['total_repairs'] ?></div>
+        <div class="dash-label">Total Repair Jobs</div>
+    </div>
+    <div class="dash-card warning">
+        <div class="dash-value"><?= (int)$dashboard['pending_repairs'] ?></div>
+        <div class="dash-label">Pending Repairs</div>
+    </div>
+    <div class="dash-card success">
+        <div class="dash-value"><?= (int)$dashboard['delivered_today'] ?></div>
+        <div class="dash-label">Delivered Today</div>
+    </div>
+    <div class="dash-card <?= $dashboard['low_stock_count'] > 0 ? 'danger' : '' ?>">
+        <div class="dash-value"><?= (int)$dashboard['low_stock_count'] ?></div>
+        <div class="dash-label">Low Stock Items</div>
+    </div>
+    <div class="dash-card <?= $dashboard['today_profit'] >= 0 ? 'success' : 'danger' ?>">
+        <div class="dash-value"><?= to_currency($dashboard['today_profit']) ?></div>
+        <div class="dash-label">Today's Profit</div>
+    </div>
+    <div class="dash-card success">
+        <div class="dash-value"><?= to_currency($dashboard['today_income']) ?></div>
+        <div class="dash-label">Today's Income</div>
+    </div>
+    <div class="dash-card warning">
+        <div class="dash-value"><?= to_currency($dashboard['today_expenses_total']) ?></div>
+        <div class="dash-label">Today's Expenses</div>
+    </div>
+    <div class="dash-card <?= $dashboard['pending_payments'] > 0 ? 'warning' : '' ?>">
+        <div class="dash-value"><?= to_currency($dashboard['pending_payments']) ?></div>
+        <div class="dash-label">Pending Payments</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-value"><?= (int)$dashboard['total_customers'] ?></div>
+        <div class="dash-label">Total Customers</div>
+    </div>
+</div>
+<?= view('partial/footer') ?>

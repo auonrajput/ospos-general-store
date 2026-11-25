@@ -1,0 +1,328 @@
+<?php
+namespace App\Controllers;
+use App\Models\Installment_plan;
+use App\Models\Installment_payment;
+use CodeIgniter\HTTP\ResponseInterface;
+
+class Installments extends Secure_Controller
+{
+    private Installment_plan $plan;
+    private Installment_payment $payment;
+
+    public function __construct()
+    {
+        parent::__construct('installments');
+        $this->plan = model(Installment_plan::class);
+        $this->payment = model(Installment_payment::class);
+    }
+
+    public function getIndex(): string
+    {
+        return view('installments/index');
+    }
+
+    public function getList(): ResponseInterface
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('installment_plans p');
+        $builder->select('p.plan_id, p.sale_id, p.down_payment, p.num_installments, p.frequency, p.financed_amount, p.status, p.created_at, CONCAT(ppl.first_name, " ", ppl.last_name) as customer_name');
+        $builder->join('customers c', 'c.person_id = p.customer_id', 'left');
+        $builder->join('people ppl', 'ppl.person_id = p.customer_id', 'left');
+        $builder->orderBy('p.plan_id', 'desc');
+        $plans = $builder->get()->getResultArray();
+
+        foreach ($plans as &$plan) {
+            $installments = $this->payment->where('plan_id', $plan['plan_id'])->orderBy('installment_number', 'asc')->findAll();
+            $plan['installments'] = $installments;
+            $paid = 0;
+            $overdue = false;
+            foreach ($installments as $inst) {
+                $paid += $inst['paid_amount'];
+                if ($inst['status'] === 'Pending' && strtotime($inst['due_date']) < strtotime('today')) {
+                    $overdue = true;
+                }
+            }
+            $plan['total_paid'] = $paid;
+            $plan['is_overdue'] = $overdue;
+        }
+
+        return $this->response->setJSON($plans);
+    }
+
+    public function postCreate(): ResponseInterface
+    {
+        $sale_id = (int) $this->request->getPost('sale_id');
+        $customer_id = $this->request->getPost('customer_id') ?: null;
+        $down_payment = (float) $this->request->getPost('down_payment');
+        $num_installments = (int) $this->request->getPost('num_installments');
+        $frequency = $this->request->getPost('frequency') ?: 'Monthly';
+        $financed_amount = (float) $this->request->getPost('financed_amount');
+        $start_date = $this->request->getPost('start_date') ?: date('Y-m-d');
+
+        if ($sale_id <= 0 || $num_installments <= 0 || $financed_amount <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Missing required fields']);
+        }
+
+        $this->plan->insert([
+            'sale_id'             => $sale_id,
+            'customer_id'         => $customer_id,
+            'down_payment'        => $down_payment,
+            'num_installments'    => $num_installments,
+            'frequency'           => $frequency,
+            'financed_amount'     => $financed_amount,
+            'status'              => 'Active',
+            'created_at'          => date('Y-m-d H:i:s'),
+        ]);
+        $plan_id = $this->plan->getInsertID();
+
+        $installment_amount = round($financed_amount / $num_installments, 2);
+        $interval_days = $frequency === 'Weekly' ? 7 : 30;
+
+        for ($i = 1; $i <= $num_installments; $i++) {
+            $due = date('Y-m-d', strtotime($start_date . " +" . ($interval_days * $i) . " days"));
+            $this->payment->insert([
+                'plan_id'             => $plan_id,
+                'installment_number'  => $i,
+                'due_date'            => $due,
+                'amount'              => $installment_amount,
+                'paid_amount'         => 0,
+                'status'              => 'Pending',
+            ]);
+        }
+
+        return $this->response->setJSON(['success' => true, 'plan_id' => $plan_id]);
+    }
+
+    public function postPay(): ResponseInterface
+    {
+        $installment_id = (int) $this->request->getPost('installment_id');
+        $amount = (float) $this->request->getPost('amount');
+
+        $installment = $this->payment->find($installment_id);
+        if (!$installment) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Installment not found']);
+        }
+
+        $new_paid = $installment['paid_amount'] + $amount;
+        $status = $new_paid >= $installment['amount'] ? 'Paid' : 'Pending';
+
+        $this->payment->update($installment_id, [
+            'paid_amount' => $new_paid,
+            'status'      => $status,
+            'paid_date'   => $status === 'Paid' ? date('Y-m-d H:i:s') : null,
+        ]);
+
+        return $this->response->setJSON(['success' => true]);
+    }
+
+    public function postDelete(): ResponseInterface
+    {
+        $plan_id = (int) $this->request->getPost('plan_id');
+
+        if ($plan_id <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid Plan ID']);
+        }
+
+        // Pehle us plan ke saare installments delete karo
+        $this->payment->where('plan_id', $plan_id)->delete();
+
+        // Phir plan delete karo
+        $this->plan->delete($plan_id);
+
+        return $this->response->setJSON(['success' => true]);
+    }
+
+    public function getSummary(): ResponseInterface
+    {
+        $db = \Config\Database::connect();
+        $today = date('Y-m-d');
+
+        // Active Plans Count
+        $active_plans = $db->table('ospos_installment_plans')->where('status', 'Active')->countAllResults();
+
+        // Pending Amount (Sum of unpaid installments)
+        $pending_amount = $db->table('ospos_installment_payments')
+                             ->selectSum('amount')
+                             ->where('status !=', 'Paid')
+                             ->get()
+                             ->getRow()
+                             ->amount ?? 0;
+
+        // Today's Due Count
+        $today_due = $db->table('ospos_installment_payments')
+                        ->where('due_date', $today)
+                        ->where('status !=', 'Paid')
+                        ->countAllResults();
+
+        // Overdue Count
+        $overdue = $db->table('ospos_installment_payments')
+                      ->where('due_date <', $today)
+                      ->where('status !=', 'Paid')
+                      ->countAllResults();
+
+        return $this->response->setJSON([
+            'success' => true,
+            'active_plans' => $active_plans,
+            'pending_amount' => number_format($pending_amount, 2),
+            'today_due' => $today_due,
+            'overdue' => $overdue
+        ]);
+    }
+
+    public function daily_collection()
+    {
+        $db = \Config\Database::connect();
+        $today = date('Y-m-d');
+        
+        // Get all payments received today
+        $payments = $db->table('ospos_installment_payments')
+                      ->select('installment_payments.*, installment_plans.sale_id, sales.customer_id, people.first_name, people.last_name')
+                      ->join('installment_plans', 'installment_plans.plan_id = installment_payments.plan_id')
+                      ->join('sales', 'sales.sale_id = installment_plans.sale_id')
+                      ->join('customers', 'customers.person_id = sales.customer_id')
+                      ->join('people', 'people.person_id = customers.person_id')
+                      ->where('ospos_installment_payments.paid_date LIKE', $today . '%')
+                      ->orderBy('ospos_installment_payments.paid_date', 'DESC')
+                      ->get()
+                      ->getResultArray();
+        
+        $total_amount = 0;
+        foreach($payments as &$p) {
+            $total_amount += $p['amount'];
+            $p['paid_date'] = date('h:i A', strtotime($p['paid_date']));
+        }
+        
+        $data = [
+            'page_title' => 'Daily Collection Report',
+            'today' => date('d/m/Y'),
+            'payments' => $payments,
+            'total_amount' => $total_amount,
+            'total_count' => count($payments)
+        ];
+        
+        return view('reports/daily_collection', $data);
+    }
+
+    public function overdue_report()
+    {
+        $db = \Config\Database::connect();
+        $today = date('Y-m-d');
+        
+        // Get all overdue installments (due_date < today AND status != Paid)
+        $overdue = $db->table('installment_payments')
+                      ->select('installment_payments.*, installment_plans.sale_id, sales.customer_id, people.first_name, people.last_name')
+                      ->join('installment_plans', 'installment_plans.plan_id = installment_payments.plan_id')
+                      ->join('sales', 'sales.sale_id = installment_plans.sale_id')
+                      ->join('customers', 'customers.person_id = sales.customer_id')
+                      ->join('people', 'people.person_id = customers.person_id')
+                      ->where('installment_payments.due_date <', $today)
+                      ->where('installment_payments.status !=', 'Paid')
+                      ->orderBy('installment_payments.due_date', 'ASC')
+                      ->get()
+                      ->getResultArray();
+        
+        $total_overdue = 0;
+        foreach($overdue as &$o) {
+            $total_overdue += ($o['amount'] - $o['paid_amount']);
+            $days_overdue = (strtotime($today) - strtotime($o['due_date'])) / (60 * 60 * 24);
+            $o['days_overdue'] = $days_overdue;
+        }
+        
+        $data = [
+            'page_title' => 'Overdue Installments Report',
+            'today' => date('d/m/Y'),
+            'overdue' => $overdue,
+            'total_overdue_amount' => $total_overdue,
+            'total_overdue_count' => count($overdue)
+        ];
+        
+        return view('reports/overdue_report', $data);
+    }
+
+    public function pending_report()
+    {
+        $db = \Config\Database::connect();
+        
+        // Get all pending installments (status != Paid)
+        $pending = $db->table('installment_payments')
+                      ->select('installment_payments.*, installment_plans.sale_id, sales.customer_id, people.first_name, people.last_name')
+                      ->join('installment_plans', 'installment_plans.plan_id = installment_payments.plan_id')
+                      ->join('sales', 'sales.sale_id = installment_plans.sale_id')
+                      ->join('customers', 'customers.person_id = sales.customer_id')
+                      ->join('people', 'people.person_id = customers.person_id')
+                      ->where('installment_payments.status !=', 'Paid')
+                      ->orderBy('installment_payments.due_date', 'ASC')
+                      ->get()
+                      ->getResultArray();
+        
+        $total_pending = 0;
+        $total_remaining = 0;
+        foreach($pending as &$p) {
+            $remaining = $p['amount'] - $p['paid_amount'];
+            $total_pending += $p['amount'];
+            $total_remaining += $remaining;
+            $p['remaining'] = $remaining;
+        }
+        
+        $data = [
+            'page_title' => 'Pending Installments Report',
+            'today' => date('d/m/Y'),
+            'pending' => $pending,
+            'total_pending_amount' => $total_pending,
+            'total_remaining_amount' => $total_remaining,
+            'total_pending_count' => count($pending)
+        ];
+        
+        return view('reports/pending_report', $data);
+    }
+
+    public function customer_statement()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+        $customer_id = $request->getGet('customer_id');
+        
+        // Fetch all customers for dropdown
+        $customers = $db->table('customers')
+                        ->select('customers.person_id, people.first_name, people.last_name')
+                        ->join('people', 'people.person_id = customers.person_id')
+                        ->orderBy('people.first_name', 'ASC')
+                        ->get()
+                        ->getResultArray();
+        
+        $statement = [];
+        $total_financed = 0;
+        $total_paid = 0;
+        $total_pending = 0;
+        
+        if ($customer_id) {
+            // Fetch installments for selected customer
+            $statement = $db->table('installment_payments')
+                            ->select('installment_payments.*, installment_plans.plan_id, installment_plans.sale_id, installment_plans.financed_amount as plan_total')
+                            ->join('installment_plans', 'installment_plans.plan_id = installment_payments.plan_id')
+                            ->where('installment_plans.customer_id', $customer_id)
+                            ->orderBy('installment_payments.due_date', 'ASC')
+                            ->get()
+                            ->getResultArray();
+            
+            foreach($statement as &$s) {
+                $total_financed += $s['amount'];
+                $total_paid += $s['paid_amount'];
+                $total_pending += ($s['amount'] - $s['paid_amount']);
+            }
+        }
+        
+        $data = [
+            'page_title' => 'Customer Statement',
+            'today' => date('d/m/Y'),
+            'customers' => $customers,
+            'selected_customer_id' => $customer_id,
+            'statement' => $statement,
+            'total_financed' => $total_financed,
+            'total_paid' => $total_paid,
+            'total_pending' => $total_pending
+        ];
+        
+        return view('reports/customer_statement', $data);
+    }
+}

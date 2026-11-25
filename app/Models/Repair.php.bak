@@ -1,0 +1,223 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Database\ResultInterface;
+use CodeIgniter\Model;
+use stdClass;
+
+/**
+ * Repair class
+ */
+class Repair extends Model
+{
+    protected $table = 'ospos_repair_jobs';
+    protected $primaryKey = 'repair_job_id';
+    protected $useAutoIncrement = true;
+    protected $useSoftDeletes = false;
+    protected $allowedFields = [
+        'job_number',
+        'date_received',
+        'arrival_time',
+        'expected_return_date',
+        'expected_return_time',
+        'customer_name',
+        'customer_mobile',
+        'alternative_number',
+        'brand',
+        'model',
+        'imei',
+        'password_pattern',
+        'fault_description',
+        'body_condition',
+        'display_condition',
+        'camera_condition',
+        'battery_condition',
+        'condition_photos',
+        'water_damage',
+        'opened_before',
+        'accessory_charger',
+        'accessory_cable',
+        'accessory_cover',
+        'accessory_sim',
+        'accessory_memory_card',
+        'estimated_charges',
+        'advance_payment',
+        'remaining_amount',
+        'warranty_days',
+        'technician_name',
+        'item_kit_id',
+        'stock_deducted',
+        'special_note',
+        'repair_status',
+        'delivery_date',
+        'delivery_time',
+        'remaining_payment_collected',
+        'customer_signature_confirmed',
+        'created_by'
+    ];
+
+    /**
+     * Columns allowed to be searched via the column-header search popups.
+     * Keys are the request parameter names, values are the actual DB columns.
+     */
+    private const SEARCHABLE_COLUMNS = [
+        'job_number'      => 'job_number',
+        'customer_search' => 'customer_name',
+        'mobile_search'   => 'customer_mobile',
+        'brand_search'    => 'brand',
+        'model_search'    => 'model',
+        'date_search'     => 'date_received',
+    ];
+
+    /**
+     * Determines if a given repair_job_id exists
+     */
+    public function exists(int $repair_job_id): bool
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder->where('repair_job_id', $repair_job_id);
+
+        return ($builder->get()->getNumRows() == 1);
+    }
+
+    /**
+     * Applies the shared filter conditions (status + per-column text search + technician) to a builder
+     *
+     * @param array $search_filters Associative array using SEARCHABLE_COLUMNS keys
+     * @param string|null $technician_filter If set, filters by technician_name
+     */
+    private function apply_filters($builder, array $status_filter = [], array $search_filters = [], ?string $technician_filter = null)
+    {
+        if (!empty($status_filter)) {
+            $builder->whereIn('repair_status', $status_filter);
+        }
+
+        foreach (self::SEARCHABLE_COLUMNS as $param_name => $db_column) {
+            $value = trim((string)($search_filters[$param_name] ?? ''));
+
+            if ($value !== '') {
+                $builder->like($db_column, $value);
+            }
+        }
+
+        // Apply technician filter if provided
+        if ($technician_filter !== null && $technician_filter !== '') {
+            $builder->where('technician_name', $technician_filter);
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Gets total of rows, optionally filtered by status list, column searches, and technician
+     */
+    public function get_total_rows(array $status_filter = [], array $search_filters = [], ?string $technician_filter = null): int
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder = $this->apply_filters($builder, $status_filter, $search_filters, $technician_filter);
+
+        return $builder->countAllResults();
+    }
+
+    /**
+     * Gets information about a particular repair job
+     */
+    public function get_info(int $repair_job_id): object
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder->where('repair_job_id', $repair_job_id);
+        $query = $builder->get();
+
+        if ($query->getNumRows() == 1) {
+            return $query->getRow();
+        } else {
+            $repair_obj = new stdClass();
+
+            foreach ($this->db->getFieldNames('ospos_repair_jobs') as $field) {
+                $repair_obj->$field = '';
+            }
+
+            return $repair_obj;
+        }
+    }
+
+    /**
+     * Returns all repair jobs, optionally filtered by status list, column searches, and technician
+     */
+    public function get_all(int $rows = 0, int $limit_from = 0, array $status_filter = [], array $search_filters = [], ?string $technician_filter = null): ResultInterface
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder = $this->apply_filters($builder, $status_filter, $search_filters, $technician_filter);
+
+        $builder->orderBy('repair_job_id', 'desc');
+
+        if ($rows > 0) {
+            $builder->limit($rows, $limit_from);
+        }
+
+        return $builder->get();
+    }
+
+    /**
+     * Returns distinct customer name + mobile pairs from past repair jobs,
+     * used to power the Customer Name autocomplete in the repair form.
+     */
+    public function get_customer_suggestions(): array
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder->select('customer_name, customer_mobile');
+        $builder->where('customer_name !=', '');
+        $builder->groupBy('customer_name, customer_mobile');
+        $builder->orderBy('customer_name', 'asc');
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Generates the next sequential job number, e.g. RJ-0001, RJ-0002
+     */
+    public function get_next_job_number(): string
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder->selectMax('repair_job_id');
+        $result = $builder->get()->getRow();
+
+        $next_id = ($result->repair_job_id ?? 0) + 1;
+
+        return 'RJ-' . str_pad((string)$next_id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Marks a repair job's stock as already deducted, to prevent double-deduction
+     */
+    public function mark_stock_deducted(int $repair_job_id): bool
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+        $builder->where('repair_job_id', $repair_job_id);
+
+        return $builder->update(['stock_deducted' => 1]);
+    }
+
+    /**
+     * Inserts or updates a repair job
+     */
+    public function save_value(array &$repair_data, int $repair_job_id = NEW_ENTRY): bool
+    {
+        $builder = $this->db->table('ospos_repair_jobs');
+
+        if ($repair_job_id == NEW_ENTRY || !$this->exists($repair_job_id)) {
+            if ($builder->insert($repair_data)) {
+                $repair_data['repair_job_id'] = $this->db->insertID();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        $builder->where('repair_job_id', $repair_job_id);
+
+        return $builder->update($repair_data);
+    }
+}

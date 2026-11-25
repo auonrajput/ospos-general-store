@@ -1,0 +1,412 @@
+<?php
+/**
+ * @var object $user_info
+ * @var array $allowed_modules
+ * @var CodeIgniter\HTTP\IncomingRequest $request
+ * @var array $config
+ */
+
+use Config\Services;
+
+$request = Services::request();
+?>
+
+<!doctype html>
+<html lang="<?= current_language_code() ?>">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="<?= base_url() ?>">
+    <title><?= esc($config['company']) . ' | ' . lang('Common.powered_by') . ' OSPOS ' . esc(config('App')->application_version) ?></title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/x-icon" href="<?= base_url('images/Bismillah_General_Store_Favicon.ico') ?>">
+    <?php $theme = (empty($config['theme']) ? 'flatly' : esc($config['theme'])); ?>
+    <link rel="stylesheet" href="resources/bootswatch/<?= "$theme" ?>/bootstrap.min.css">
+    <?php
+        $dark_themes = ['darkly', 'cyborg', 'slate', 'superhero', 'solar', 'vapor', 'ospos'];
+        $is_dark_theme = in_array($theme, $dark_themes, true);
+    ?>
+    <style>
+        :root {
+            <?php if ($is_dark_theme): ?>
+            --panel-bg: #2b2b2b;
+            --panel-bg-alt: #383838;
+            --panel-text: #ffffff;
+            --panel-text-muted: #aaaaaa;
+            --panel-border: #444444;
+            --panel-hover: rgba(255,255,255,0.06);
+            <?php else: ?>
+            --panel-bg: #f5f5f5;
+            --panel-bg-alt: #e9e9e9;
+            --panel-text: #212529;
+            --panel-text-muted: #6c757d;
+            --panel-border: #dee2e6;
+            --panel-hover: rgba(0,0,0,0.04);
+            <?php endif; ?>
+        }
+    </style>
+
+    <?php if (ENVIRONMENT == 'development' || get_cookie('debug') == 'true' || $request->getGet('debug') == 'true') : ?>
+        <!-- inject:debug:css -->
+        <link rel="stylesheet" href="resources/css/jquery-ui-fe010342cb.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-dialog-1716ef6e7c.css">
+        <link rel="stylesheet" href="resources/css/jasny-bootstrap-40bf85f3ed.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-datetimepicker-66374fba71.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-select-66d5473b84.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-table-ed9d1a3360.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-table-sticky-header-07d65e7533.css">
+        <link rel="stylesheet" href="resources/css/daterangepicker-85523b7dfe.css">
+        <link rel="stylesheet" href="resources/css/chartist-c19aedb81a.css">
+        <link rel="stylesheet" href="resources/css/chartist-plugin-tooltip-2e0ec92e60.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-tagsinput-5a6d46a06c.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-toggle-e12db6c1f3.css">
+        <link rel="stylesheet" href="resources/css/bootstrap-4875cf7b0d.autocomplete.css">
+        <link rel="stylesheet" href="resources/css/invoice-a99a4dfac3.css">
+        <link rel="stylesheet" href="resources/css/ospos_print-bf10c1438b.css">
+        <link rel="stylesheet" href="resources/css/ospos-81c919f57a.css">
+        <link rel="stylesheet" href="resources/css/popupbox-57d45cb822.css">
+        <link rel="stylesheet" href="resources/css/receipt-0606f1c54e.css">
+        <link rel="stylesheet" href="resources/css/register-a6a6cc948d.css">
+        <link rel="stylesheet" href="resources/css/reports-ace7faf688.css">
+        <!-- endinject -->
+        <!-- inject:debug:js -->
+        <script src="resources/js/jquery-12e87d2f3a.js"></script>
+        <script src="resources/js/jquery-4fa896f615.form.js"></script>
+        <script src="resources/js/jquery-a0350e8820.validate.js"></script>
+        <script src="resources/js/jquery-ui-cbc65ff85e.js"></script>
+        <script src="resources/js/bootstrap-894d79839f.js"></script>
+        <script src="resources/js/bootstrap-dialog-27123abb65.js"></script>
+        <script src="resources/js/jasny-bootstrap-7c6d7b8adf.js"></script>
+        <script src="resources/js/bootstrap-datetimepicker-25e39b7ef8.js"></script>
+        <script src="resources/js/bootstrap-select-b01896a67b.js"></script>
+        <script src="resources/js/bootstrap-table-bdb06552ea.js"></script>
+        <script src="resources/js/bootstrap-table-export-6389dc2aa5.js"></script>
+        <script src="resources/js/bootstrap-table-mobile-fc655b68ab.js"></script>
+        <script src="resources/js/bootstrap-table-sticky-header-cb4d83d172.js"></script>
+        <script src="resources/js/moment-d65dc6d2e6.min.js"></script>
+        <script src="resources/js/daterangepicker-048c56a690.js"></script>
+        <script src="resources/js/es6-promise-855125e6f5.js"></script>
+        <script src="resources/js/FileSaver-e73b1946e8.js"></script>
+        <script src="resources/js/html2canvas-e1d3a8d7cd.js"></script>
+        <script src="resources/js/jspdf-bbbebb610c.umd.js"></script>
+        <script src="resources/js/purify-6f534925a6.js"></script>
+        <script src="resources/js/jspdf-92d87e47e8.plugin.autotable.js"></script>
+        <script src="resources/js/tableExport-3d506dfa61.min.js"></script>
+        <script src="resources/js/chartist-8a7ecb4445.js"></script>
+        <script src="resources/js/chartist-plugin-pointlabels-0a1ab6aa4e.js"></script>
+        <script src="resources/js/chartist-plugin-tooltip-116cb48831.js"></script>
+        <script src="resources/js/chartist-plugin-axistitle-80a1198058.js"></script>
+        <script src="resources/js/chartist-plugin-barlabels-4165273742.js"></script>
+        <script src="resources/js/bootstrap-notify-376bc6eb87.js"></script>
+        <script src="resources/js/bootstrap-tagsinput-855a7c7670.js"></script>
+        <script src="resources/js/bootstrap-toggle-1c7a19a049.js"></script>
+        <script src="resources/js/clipboard-908af414ab.js"></script>
+        <script src="resources/js/imgpreview-1db063409f.full.jquery.js"></script>
+        <script src="resources/js/manage_tables-e5dae00ba1.js"></script>
+        <script src="resources/js/nominatim-89be77a11a.autocomplete.js"></script>
+        <!-- endinject -->
+    <?php else : ?>
+        <!--inject:prod:css -->
+        <link rel="stylesheet" href="resources/opensourcepos-ce831737ca.min.css">
+        <!-- endinject -->
+
+        <!-- Tweaks to the UI for a particular theme should drop here  -->
+        <?php if ($config['theme'] != 'flatly' && file_exists($_SERVER['DOCUMENT_ROOT'] . '/public/css/' . esc($config['theme']) . '.css')) { ?>
+            <link rel="stylesheet" href="<?= 'css/' . esc($config['theme']) . '.css' ?>">
+        <?php } ?>
+        <!-- inject:prod:js -->
+        <script src="resources/jquery-2c872dbe60.min.js"></script>
+        <script src="resources/opensourcepos-c0154d3618.min.js"></script>
+        <!-- endinject -->
+    <?php endif; ?>
+
+    <link rel="stylesheet" href="<?= base_url('css/general-store-theme.css') ?>">
+    <?= view('partial/header_js') ?>
+    <?= view('partial/lang_lines') ?>
+
+    <style>
+        html {
+            overflow: auto;
+        }
+    </style>
+
+<style>
+
+.theme-dark select.form-control, 
+.theme-dark select,
+.theme-dark select.custom-select,
+.theme-dark select.bootstrap-select {
+    color: #ffffff !important;
+    background-color: #1a1a2e !important;
+    border-color: #4ecca3 !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Jab dropdown open ho */
+select.form-control option, 
+select option,
+select.custom-select option,
+select.bootstrap-select option {
+    color: #000000 !important;
+    background-color: #f8f9fa !important;
+    -webkit-text-fill-color: #000000 !important;
+}
+
+/* Focus state */
+.theme-dark select.form-control:focus,
+.theme-dark select:focus {
+    color: #ffffff !important;
+    background-color: #1a1a2e !important;
+    border-color: #4ecca3 !important;
+}
+
+/* Darkly theme specific */
+.theme-darkly select.form-control,
+.theme-darkly select,
+body.darkly select {
+    color: #ffffff !important;
+    background-color: #1a1a2e !important;
+}
+</style>
+
+
+
+
+<style>
+
+.theme-light {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-color: #dee2e6;
+    --card-bg: #ffffff;
+}
+
+.theme-dark {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --border-color: #4ecca3;
+    --card-bg: #16213e;
+}
+
+/* Apply theme to body and containers */
+.theme-light body, 
+.theme-light .container, 
+.theme-light .tab-content,
+.theme-light .container-fluid {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.theme-dark body, 
+.theme-dark .container, 
+.theme-dark .tab-content,
+.theme-dark .container-fluid {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Cards and Panels */
+.theme-dark .card, 
+.theme-dark .panel, 
+.theme-dark .tab-pane,
+.theme-dark .modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.theme-dark .table {
+    color: var(--text-primary) !important;
+}
+
+.theme-dark .table thead th {
+    background-color: #0f3460 !important;
+    color: #fff !important;
+}
+
+.theme-dark .table tbody td {
+    border-color: #2a2a4a !important;
+}
+
+/* Form Elements */
+.theme-dark input:not([type="checkbox"]):not([type="radio"]),
+.theme-dark select,
+.theme-dark textarea {
+    background-color: #1a1a2e !important;
+    color: #fff !important;
+    border-color: #4ecca3 !important;
+}
+
+.theme-dark label {
+    color: var(--text-secondary) !important;
+}
+
+/* Dropdowns */
+.theme-dark select.form-control option,
+.theme-dark select option {
+    color: #000 !important;
+    background-color: #f8f9fa !important;
+}
+
+.theme-light select option {
+    color: #000 !important;
+    background-color: #fff !important;
+}
+
+/* Buttons */
+.theme-dark .btn-primary {
+    background-color: #4ecca3 !important;
+    border-color: #4ecca3 !important;
+    color: #1a1a2e !important;
+}
+
+.theme-dark .btn-secondary {
+    background-color: #2a2a4a !important;
+    border-color: #2a2a4a !important;
+    color: #fff !important;
+}
+
+/* Navigation */
+.theme-dark .nav-tabs .nav-link {
+    color: var(--text-secondary) !important;
+}
+
+.theme-dark .nav-tabs .nav-link.active {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Sidebar (if exists) */
+.theme-dark .sidebar,
+.theme-dark .settings-sidebar {
+    background-color: #0f3460 !important;
+    border-color: #2a2a4a !important;
+}
+
+/* Modals */
+.theme-dark .modal-header,
+.theme-dark .modal-footer {
+    border-color: #2a2a4a !important;
+}
+
+/* Alerts */
+.theme-dark .alert-info {
+    background-color: #0f3460 !important;
+    color: #fff !important;
+    border-color: #4ecca3 !important;
+}
+</style>
+
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="topbar">
+            <div class="container">
+                <div class="navbar-left">
+                    <div id="liveclock"><?= date($config['dateformat'] . ' ' . $config['timeformat']) ?></div>
+                </div>
+
+                <div class="navbar-right" style="margin: 0;">
+                    <?= anchor("home/changePassword/$user_info->person_id", "$user_info->first_name $user_info->last_name", ['class' => 'modal-dlg', 'data-btn-submit' => lang('Common.submit'), 'title' => lang('Employees.change_password')]) ?>
+                    <span>&nbsp;|&nbsp;</span>
+                    <?= anchor('home/logout', lang('Login.logout')) ?>
+                </div>
+
+                <div class="navbar-center" style="text-align: center;">
+                    <strong>BS General Store POS</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="navbar navbar-default" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+
+                    <a class="navbar-brand" href="<?= site_url() ?>" style="display:flex; align-items:center; height:auto;"><img src="<?= base_url('images/Bismillah%20General%20Store%20Emblem.png') ?>" alt="Bismillah General Store" style="height:38px; width:auto; max-width:180px; object-fit:contain;"></a>
+                </div>
+
+                <div class="navbar-collapse collapse">
+                    <?php
+                    $nav_categories = [
+                        'sales_customers' => ['label' => 'Sales & Customers', 'icon' => 'glyphicon-shopping-cart', 'modules' => ['sales', 'customers', 'giftcards', 'messages']],
+                        'inventory'        => ['label' => 'Inventory',         'icon' => 'glyphicon-list-alt',       'modules' => ['items', 'item_kits', 'suppliers', 'receivings', 'stock_history']],
+                        'reports_admin'    => ['label' => 'Reports & Admin',   'icon' => 'glyphicon-stats',           'modules' => ['reports', 'activity_logs', 'expenses', 'cashups', 'office']],
+                    ];
+                    $nav_categorized = [];
+                    $nav_mapped_ids = [];
+                    foreach ($nav_categories as $nav_key => $nav_cat) {
+                        foreach ($allowed_modules as $nav_module) {
+                            if (in_array($nav_module->module_id, $nav_cat['modules'], true)) {
+                                $nav_categorized[$nav_key][] = $nav_module;
+                                $nav_mapped_ids[] = $nav_module->module_id;
+                            }
+                        }
+                    }
+                    $nav_other = [];
+                    foreach ($allowed_modules as $nav_module) {
+                        if (!in_array($nav_module->module_id, $nav_mapped_ids, true)
+                            && !in_array($nav_module->module_id, ['repairs', 'buy_used_phone', 'imei_lookup'], true)) {
+                            $nav_other[] = $nav_module;
+                        }
+                    }
+                    if (!empty($nav_other)) {
+                        $nav_categories['other'] = ['label' => 'Other', 'icon' => 'glyphicon-th-large', 'modules' => []];
+                        $nav_categorized['other'] = $nav_other;
+                    }
+                    $nav_current_segment = $request->getUri()->getSegment(1);
+                    ?>
+                    <ul class="nav navbar-nav navbar-right">
+                        <?php foreach ($nav_categories as $nav_key => $nav_cat): ?>
+                            <?php if (!empty($nav_categorized[$nav_key])): ?>
+                                <?php
+                                $nav_cat_active = false;
+                                foreach ($nav_categorized[$nav_key] as $nav_m) {
+                                    if ($nav_m->module_id == $nav_current_segment) {
+                                        $nav_cat_active = true;
+                                    }
+                                }
+                                ?>
+                                <li class="dropdown <?= $nav_cat_active ? 'active' : '' ?>">
+                                    <a href="#" class="dropdown-toggle menu-icon" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                                        <span class="glyphicon <?= esc($nav_cat['icon'], 'attr') ?>" style="font-size: 20px;"></span><br>
+                                        <?= esc($nav_cat['label']) ?> <span class="caret"></span>
+                                    </a>
+                                    <ul class="dropdown-menu" style="min-width: 200px;">
+                                        <?php foreach ($nav_categorized[$nav_key] as $nav_module): ?>
+                                            <li>
+                                                <a href="<?= base_url($nav_module->module_id) ?>">
+                                                    <img src="<?= base_url("images/menubar/$nav_module->module_id.svg") ?>" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;" alt="">
+                                                    <?= lang('Module.' . $nav_module->module_id) ?>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+
+<style>
+.navbar-default { background-color: #1B4332 !important; border-color: #1B4332 !important; }
+.navbar-default .navbar-nav > li > a, .navbar-default .navbar-brand { color: #FFFFFF !important; }
+.navbar-default .navbar-nav > li > a:hover, .navbar-default .navbar-brand:hover { background-color: #2D6A4F !important; color: #FFFFFF !important; }
+</style>

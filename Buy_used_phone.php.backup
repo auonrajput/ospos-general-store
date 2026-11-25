@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Models\Used_phone_purchase;
+use CodeIgniter\HTTP\ResponseInterface;
+
+class Buy_used_phone extends Secure_Controller
+{
+    private Used_phone_purchase $purchase;
+
+    private const SEARCH_PARAMS = ['device_search', 'imei_search', 'seller_search'];
+
+    public function __construct()
+    {
+        parent::__construct('buy_used_phone');
+        $this->purchase = model(Used_phone_purchase::class);
+    }
+
+    private function get_search_filters_from_request(): array
+    {
+        $search_filters = [];
+        foreach (self::SEARCH_PARAMS as $param) {
+            $search_filters[$param] = $this->request->getGet($param, FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
+        }
+        return $search_filters;
+    }
+
+    public function getIndex(): string
+    {
+        $data['table_headers'] = get_used_phone_manage_table_headers();
+        $data['filters'] = [
+            'In Stock'    => 'In Stock',
+            'Refurbished' => 'Refurbished',
+            'Sold'        => 'Sold',
+        ];
+        $data['selected_filters'] = $this->request->getGet('filters') ?? [];
+        $data['selected_search'] = $this->get_search_filters_from_request();
+        $data['status_counts'] = $this->purchase->get_status_counts();
+
+        return view('buy_used_phone/manage', $data);
+    }
+
+    public function getSearch(): ResponseInterface
+    {
+        $limit  = $this->request->getGet('limit', FILTER_SANITIZE_NUMBER_INT);
+        $offset = $this->request->getGet('offset', FILTER_SANITIZE_NUMBER_INT);
+        $status_filter  = $this->request->getGet('filters', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? [];
+        $search_filters = $this->get_search_filters_from_request();
+
+        $rows = $this->purchase->get_all((int)$limit, (int)$offset, $status_filter, $search_filters);
+        $total_rows = $this->purchase->get_total_rows($status_filter, $search_filters);
+
+        $data_rows = [];
+        foreach ($rows->getResult() as $row) {
+            $data_rows[] = get_used_phone_data_row($row);
+        }
+
+        return $this->response->setJSON(['total' => $total_rows, 'rows' => $data_rows]);
+    }
+
+    public function getView(int $purchase_id = 0): string
+    {
+        $data['purchase'] = $purchase_id > 0 ? $this->purchase->get_info($purchase_id) : new \stdClass();
+        if ($purchase_id == 0) {
+            foreach (['purchase_id','seller_name','seller_mobile','device','brand','model','storage','color','imei','id_type','id_number','id_card_image','purchase_price','resale_price','condition_rating','grade','battery_health','warranty_days','screen_condition','battery_grade','body_condition','base_market_value','status','accessories','notes'] as $f) {
+                $data['purchase']->$f = '';
+            }
+        }
+        $data['purchase_id'] = $purchase_id;
+        $data['controller_name'] = 'buy_used_phone';
+
+        return view('buy_used_phone/form', $data);
+    }
+
+    public function postSave(int $purchase_id = 0): ResponseInterface
+    {
+        $fields = [
+            'seller_name', 'seller_mobile', 'device', 'brand', 'model', 'storage', 'color',
+            'imei', 'id_type', 'id_number', 'purchase_price', 'resale_price',
+            'condition_rating', 'grade', 'battery_health', 'warranty_days', 'screen_condition',
+            'battery_grade', 'body_condition', 'base_market_value', 'status', 'accessories', 'notes',
+        ];
+
+        $data = [];
+        foreach ($fields as $field) {
+            $data[$field] = $this->request->getPost($field, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        }
+
+        if ($purchase_id == 0) {
+            $data['date_added'] = date('Y-m-d H:i:s');
+            $this->purchase->insert($data);
+            $purchase_id = $this->purchase->getInsertID();
+        } else {
+            $this->purchase->update($purchase_id, $data);
+        }
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Saved successfully', 'id' => $purchase_id]);
+    }
+
+    public function getRow(int $purchase_id): ResponseInterface
+    {
+        $row = $this->purchase->get_info($purchase_id);
+        $data_row = get_used_phone_data_row($row);
+        return $this->response->setJSON([$purchase_id => $data_row]);
+    }
+
+    public function getDelete(int $purchase_id): ResponseInterface
+    {
+        $this->purchase->delete($purchase_id);
+        return $this->response->setJSON(['success' => true]);
+    }
+}

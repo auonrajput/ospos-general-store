@@ -1,0 +1,426 @@
+:root {
+    --gs-primary: #1B4332;
+    --gs-hover: #2D6A4F;
+    --gs-accent: #40916C;
+    --gs-light: #E8F3E9;
+    --gs-border: #B7D8C0;
+    --gs-text: #212529;
+}
+
+.topbar {
+    background: var(--gs-primary) !important;
+}
+
+.navbar-default {
+    background-color: var(--gs-primary) !important;
+    border-color: var(--gs-primary) !important;
+}
+
+.navbar-default .navbar-nav > li > a,
+.navbar-default .navbar-brand {
+    color: #FFFFFF !important;
+}
+
+.navbar-default .navbar-nav > li > a:hover,
+.navbar-default .navbar-nav > li > a:focus,
+.navbar-default .navbar-nav > li.active > a,
+.navbar-default .navbar-nav > li.active > a:hover,
+.navbar-default .navbar-nav > li.active > a:focus {
+    background-color: var(--gs-hover) !important;
+    color: #FFFFFF !important;
+}
+
+.navbar-default .navbar-nav > li > a .glyphicon,
+.navbar-default .navbar-nav > li > a .fa,
+.navbar-default .navbar-nav > li > a i,
+.navbar-default .navbar-nav > li > a .caret {
+    color: #FFFFFF !important;
+}
+
+.navbar-default .navbar-nav .dropdown-menu {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--gs-border) !important;
+}
+
+.navbar-default .navbar-nav .dropdown-menu > li > a {
+    background-color: #FFFFFF !important;
+    color: var(--gs-primary) !important;
+}
+
+.navbar-default .navbar-nav .dropdown-menu > li > a:hover,
+.navbar-default .navbar-nav .dropdown-menu > li > a:focus {
+    background-color: var(--gs-light) !important;
+    color: var(--gs-primary) !important;
+}
+
+.navbar-default .navbar-nav .dropdown-menu > li > a .glyphicon,
+.navbar-default .navbar-nav .dropdown-menu > li > a .fa,
+.navbar-default .navbar-nav .dropdown-menu > li > a i {
+    color: var(--gs-accent) !important;
+}
+
+.btn-primary,
+.btn-info {
+    background-color: var(--gs-primary) !important;
+    border-color: var(--gs-primary) !important;
+    color: #FFFFFF !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-info:hover,
+.btn-info:focus {
+    background-color: var(--gs-hover) !important;
+    border-color: var(--gs-hover) !important;
+    color: #FFFFFF !important;
+}
+
+.btn-success {
+    background-color: var(--gs-accent) !important;
+    border-color: var(--gs-accent) !important;
+    color: #FFFFFF !important;
+}
+
+.btn-default {
+    background-color: #F4F7F4 !important;
+    border-color: var(--gs-border) !important;
+    color: var(--gs-primary) !important;
+}
+
+.btn-default:hover,
+.btn-default:focus {
+    background-color: var(--gs-light) !important;
+    border-color: var(--gs-accent) !important;
+    color: var(--gs-primary) !important;
+}
+
+.form-control,
+input.form-control,
+select.form-control,
+textarea.form-control,
+.bootstrap-tagsinput {
+    background-color: #FFFFFF !important;
+    color: var(--gs-text) !important;
+    border: 1px solid var(--gs-border) !important;
+    box-shadow: none !important;
+}
+
+.form-control:focus,
+input.form-control:focus,
+select.form-control:focus,
+textarea.form-control:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--gs-accent) !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 2px rgba(64, 145, 108, 0.16) !important;
+}
+
+select option {
+    background-color: #FFFFFF !important;
+    color: var(--gs-text) !important;
+}
+
+button.btn.dropdown-toggle,
+button.btn.dropdown-toggle.btn-sm {
+    background-color: #FFFFFF !important;
+    color: var(--gs-primary) !important;
+    border: 1px solid var(--gs-border) !important;
+}
+
+button.btn.dropdown-toggle:hover,
+button.btn.dropdown-toggle:focus,
+button.btn.dropdown-toggle:active {
+    background-color: var(--gs-light) !important;
+    color: var(--gs-primary) !important;
+    border-color: var(--gs-accent) !important;
+}
+
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+    background-color: #FFFFFF !important;
+    color: var(--gs-text) !important;
+    border: 1px solid var(--gs-border) !important;
+}
+
+.select2-dropdown {
+    background-color: #FFFFFF !important;
+    border-color: var(--gs-border) !important;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--gs-primary) !important;
+    color: #FFFFFF !important;
+}
+
+.select2-container--default .select2-results__option[aria-selected="true"] {
+    background-color: var(--gs-light) !important;
+    color: var(--gs-primary) !important;
+}
+
+.ui-autocomplete {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--gs-border) !important;
+}
+
+.ui-autocomplete .ui-menu-item > a.ui-corner-all {
+    color: var(--gs-primary) !important;
+}
+
+.ui-autocomplete .ui-menu-item > a.ui-corner-all.ui-state-hover,
+.ui-autocomplete .ui-menu-item > a.ui-corner-all.ui-state-active {
+    background-color: var(--gs-primary) !important;
+    color: #FFFFFF !important;
+}
+
+.table > thead > tr > th {
+    background-color: var(--gs-light);
+    color: var(--gs-primary);
+    border-color: var(--gs-border);
+}
+
+.table > tbody > tr:hover {
+    background-color: #F0F7F1;
+}
+
+.panel-primary {
+    border-color: var(--gs-primary);
+}
+
+.panel-primary > .panel-heading {
+    background-color: var(--gs-primary);
+    border-color: var(--gs-primary);
+}
+
+.panel-info {
+    border-color: var(--gs-border);
+}
+
+.panel-info > .panel-heading {
+    background-color: var(--gs-light);
+    border-color: var(--gs-border);
+    color: var(--gs-primary);
+}
+
+.alert-info {
+    background-color: var(--gs-light) !important;
+    border-color: var(--gs-border) !important;
+    color: var(--gs-primary) !important;
+}
+
+.dropdown-menu {
+    border-color: var(--gs-border) !important;
+}
+
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus {
+    background-color: var(--gs-light) !important;
+    color: var(--gs-primary) !important;
+}
+
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+    border-top: 3px solid var(--gs-accent);
+    color: var(--gs-primary);
+}
+
+.pagination > .active > a,
+.pagination > .active > a:hover,
+.pagination > .active > span {
+    background-color: var(--gs-primary) !important;
+    border-color: var(--gs-primary) !important;
+    color: #FFFFFF !important;
+}
+
+a {
+    color: var(--gs-primary);
+}
+
+a:hover,
+a:focus {
+    color: var(--gs-hover);
+}
+
+label {
+    color: var(--gs-text);
+}
+
+label.required {
+    color: #C0392B !important;
+}
+/* General Store theme: Bootstrap Select overrides */
+.bootstrap-select > .dropdown-toggle,
+.bootstrap-select > .dropdown-toggle.btn-primary,
+.bootstrap-select > .dropdown-toggle.btn-info,
+.bootstrap-select > .dropdown-toggle.btn-default {
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    color: #1B4332 !important;
+    border: 1px solid #B7D8C0 !important;
+    box-shadow: none !important;
+}
+
+.bootstrap-select > .dropdown-toggle:hover,
+.bootstrap-select > .dropdown-toggle:focus,
+.bootstrap-select.open > .dropdown-toggle {
+    background-color: #E8F3E9 !important;
+    color: #1B4332 !important;
+    border-color: #40916C !important;
+}
+
+.bootstrap-select .dropdown-menu {
+    border-color: #B7D8C0 !important;
+}
+
+.bootstrap-select .dropdown-menu > li > a {
+    color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-menu > li > a:hover,
+.bootstrap-select .dropdown-menu > li.selected > a {
+    background-color: #E8F3E9 !important;
+    color: #1B4332 !important;
+}
+
+.bootstrap-select .bs-ok-default:after {
+    color: #40916C !important;
+}
+
+/* Flatly native form controls - General Store */
+html body select.form-control,
+html body select.input-sm,
+html body input.form-control,
+html body textarea.form-control {
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    color: #212529 !important;
+    border: 1px solid #B7D8C0 !important;
+    box-shadow: none !important;
+}
+
+html body select.form-control:focus,
+html body select.input-sm:focus,
+html body input.form-control:focus,
+html body textarea.form-control:focus {
+    background-color: #FFFFFF !important;
+    color: #212529 !important;
+    border-color: #40916C !important;
+    box-shadow: 0 0 0 2px rgba(64, 145, 108, 0.16) !important;
+}
+
+html body select.form-control option {
+    background-color: #FFFFFF !important;
+    color: #1B4332 !important;
+}
+
+/* Bootstrap Select - General Store colors */
+.bootstrap-select > select.selectpicker,
+.bootstrap-select select.selectpicker {
+    color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-toggle,
+.bootstrap-select .dropdown-toggle .filter-option,
+.bootstrap-select .dropdown-toggle .filter-option-inner-inner,
+.bootstrap-select .dropdown-toggle .bs-caret,
+.bootstrap-select .dropdown-toggle .caret {
+    color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-menu.inner > li > a {
+    color: #1B4332 !important;
+    background-color: #FFFFFF !important;
+}
+
+.bootstrap-select .dropdown-menu.inner > li > a:hover,
+.bootstrap-select .dropdown-menu.inner > li.active > a {
+    color: #FFFFFF !important;
+    background-color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-menu.inner > li.selected > a {
+    color: #1B4332 !important;
+    background-color: #E8F3E9 !important;
+}
+
+/* Bootstrap Select - General Store colors */
+.bootstrap-select > select.selectpicker,
+.bootstrap-select select.selectpicker {
+    color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-toggle,
+.bootstrap-select .dropdown-toggle .filter-option,
+.bootstrap-select .dropdown-toggle .filter-option-inner-inner,
+.bootstrap-select .dropdown-toggle .bs-caret,
+.bootstrap-select .dropdown-toggle .caret {
+    color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-menu.inner > li > a {
+    color: #1B4332 !important;
+    background-color: #FFFFFF !important;
+}
+
+.bootstrap-select .dropdown-menu.inner > li > a:hover,
+.bootstrap-select .dropdown-menu.inner > li.active > a {
+    color: #FFFFFF !important;
+    background-color: #1B4332 !important;
+}
+
+.bootstrap-select .dropdown-menu.inner > li.selected > a {
+    color: #1B4332 !important;
+    background-color: #E8F3E9 !important;
+}
+
+/* General Store modal header */
+.bootstrap-dialog.type-primary .modal-header,
+.bootstrap-dialog.type-primary .modal-header .bootstrap-dialog-title {
+    background-color: #1B4332 !important;
+    background-image: none !important;
+    border-color: #1B4332 !important;
+    color: #FFFFFF !important;
+}
+
+.bootstrap-dialog.type-primary .modal-header .close {
+    color: #FFFFFF !important;
+    opacity: 0.9;
+}
+
+/* Login Go Button */
+#submit-button.btn-primary {
+    background-color: #1B4332 !important;
+    border-color: #1B4332 !important;
+    color: #ffffff !important;
+}
+
+#submit-button.btn-primary:hover,
+#submit-button.btn-primary:focus {
+    background-color: #2D6A4F !important;
+    border-color: #2D6A4F !important;
+    color: #ffffff !important;
+}
+
+/* Login Footer Branding */
+footer .footer {
+    background-color: #1B4332 !important;
+    color: #FFFFFF !important;
+}
+
+footer .footer span {
+    color: #FFFFFF !important;
+}
+
+/* Dashboard Topbar: User Name and Logout */
+.navbar-right a,
+.navbar-right span {
+    color: #FFFFFF !important;
+}
+
+.navbar-right a:hover,
+.navbar-right a:focus {
+    color: #D8F3DC !important;
+    text-decoration: none !important;
+}

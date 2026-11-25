@@ -1,0 +1,459 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Models\Repair;
+use App\Models\Repair_status_history;
+use App\Models\Item_kit_items;
+use App\Models\Item_quantity;
+use App\Models\Item_kit;
+use App\Models\Employee;
+use Config\OSPOS;
+use CodeIgniter\HTTP\ResponseInterface;
+
+class Repairs extends Secure_Controller
+{
+    private Repair $repair;
+    private Repair_status_history $repair_status_history;
+    private Item_kit_items $item_kit_items;
+    private Item_quantity $item_quantity;
+    private Item_kit $item_kit;
+    private Employee $employee_model;
+
+    private const SEARCH_PARAMS = [
+        'job_number',
+        'customer_search',
+        'mobile_search',
+        'brand_search',
+        'model_search',
+        'date_search',
+    ];
+
+    public function __construct()
+    {
+        parent::__construct('repairs');
+
+        $this->config = config(OSPOS::class)->settings;
+
+        $this->repair = model(Repair::class);
+        $this->repair_status_history = model(Repair_status_history::class);
+        $this->item_kit_items = model(Item_kit_items::class);
+        $this->item_quantity = model(Item_quantity::class);
+        $this->item_kit = model(Item_kit::class);
+        $this->employee_model = model(Employee::class);
+    }
+
+    private function get_search_filters_from_request(): array
+    {
+        $search_filters = [];
+
+        foreach (self::SEARCH_PARAMS as $param) {
+            $search_filters[$param] = $this->request->getGet($param, FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
+        }
+
+        return $search_filters;
+    }
+
+    private function get_logged_in_user_name(): string
+    {
+        $employee_info = $this->employee_model->get_logged_in_employee_info();
+        if ($employee_info) {
+            return trim($employee_info->first_name . ' ' . $employee_info->last_name);
+        }
+        return '';
+    }
+
+    private function is_job_accessible(int $repair_job_id): bool
+    {
+        if (!$this->employee_model->is_technician()) {
+            return true;
+        }
+
+        $repair_info = $this->repair->get_info($repair_job_id);
+        $logged_in_name = $this->get_logged_in_user_name();
+
+        return ($repair_info->technician_name === $logged_in_name);
+    }
+
+    public function getIndex(): string
+    {
+        $data['table_headers'] = get_repairs_manage_table_headers();
+
+        $data['filters'] = [
+            'Received'      => 'Received',
+            'Checking'      => 'Checking',
+            'Waiting Parts' => 'Waiting Parts',
+            'Repairing'     => 'Repairing',
+            'Ready'         => 'Ready',
+            'Delivered'     => 'Delivered',
+            'Cancelled'     => 'Cancelled'
+        ];
+
+        $data['selected_filters'] = $this->request->getGet('filters') ?? [];
+        $data['selected_search'] = $this->get_search_filters_from_request();
+
+        $technician_filter = null;
+        if ($this->employee_model->is_technician()) {
+            $technician_filter = $this->get_logged_in_user_name();
+        }
+        $data['status_counts'] = $this->repair->get_status_counts($technician_filter);
+
+        return view('repairs/manage', $data);
+    }
+
+    public function getSearch(): ResponseInterface
+    {
+        $limit  = $this->request->getGet('limit', FILTER_SANITIZE_NUMBER_INT);
+        $offset = $this->request->getGet('offset', FILTER_SANITIZE_NUMBER_INT);
+
+        $status_filter = $this->request->getGet('filters', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? [];
+        $search_filters = $this->get_search_filters_from_request();
+
+        $technician_filter = null;
+        if ($this->employee_model->is_technician()) {
+            $technician_filter = $this->get_logged_in_user_name();
+        }
+
+        $repairs = $this->repair->get_all((int)$limit, (int)$offset, $status_filter, $search_filters, $technician_filter);
+        $total_rows = $this->repair->get_total_rows($status_filter, $search_filters, $technician_filter);
+
+        $data_rows = [];
+        foreach ($repairs->getResult() as $repair_row) {
+            $data_rows[] = get_repairs_data_row($repair_row);
+        }
+
+        return $this->response->setJSON(['total' => $total_rows, 'rows' => $data_rows]);
+    }
+
+    public function getView(int $repair_job_id = NEW_ENTRY): string
+    {
+        if ($repair_job_id != NEW_ENTRY && !$this->is_job_accessible($repair_job_id)) {
+            return redirect()->to('repairs')->with('error', 'You do not have permission to view this job.');
+        }
+
+        $data['repair_info'] = $this->repair->get_info($repair_job_id);
+
+        if ($repair_job_id == NEW_ENTRY) {
+            $data['repair_info']->job_number = $this->repair->get_next_job_number();
+        }
+
+        $data['customer_suggestions'] = $this->repair->get_customer_suggestions();
+        $data['item_kits'] = $this->item_kit->get_all_for_dropdown();
+        $data['employees'] = $this->employee_model->get_all()->getResultArray();
+
+        return view('repairs/form', $data);
+    }
+
+    public function getPrint(int $repair_job_id): string
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return redirect()->to('repairs')->with('error', 'You do not have permission to view this job.');
+        }
+
+        $data['repair_info'] = $this->repair->get_info($repair_job_id);
+
+        return view('repairs/print', $data);
+    }
+
+    public function getDeliver(int $repair_job_id): string
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return redirect()->to('repairs')->with('error', 'You do not have permission to view this job.');
+        }
+
+        $data['repair_info'] = $this->repair->get_info($repair_job_id);
+
+        return view('repairs/deliver', $data);
+    }
+
+    public function getTechnician(int $repair_job_id): string
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return redirect()->to('repairs')->with('error', 'You do not have permission to view this job.');
+        }
+
+        $data['repair_info'] = $this->repair->get_info($repair_job_id);
+        $data['employees'] = $this->employee_model->get_all()->getResultArray();
+
+        return view('repairs/technician', $data);
+    }
+
+    public function postTechnician(int $repair_job_id): ResponseInterface
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'You do not have permission to modify this job.'
+            ]);
+        }
+
+        $technician_name = $this->request->getPost('technician_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+        $repair_data = [
+            'technician_name' => $technician_name
+        ];
+
+        if ($this->repair->save_value($repair_data, $repair_job_id)) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Technician assigned successfully.',
+                'id'      => $repair_job_id
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Could not assign technician.'
+            ]);
+        }
+    }
+
+    public function getItemkit(int $repair_job_id): string
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return redirect()->to('repairs')->with('error', 'You do not have permission to view this job.');
+        }
+
+        $data['repair_info'] = $this->repair->get_info($repair_job_id);
+        $data['item_kits'] = $this->item_kit->get_all_for_dropdown();
+
+        $data['assigned_kits'] = [];
+        if (!empty($data['repair_info']->item_kit_id)) {
+            $kit_ids = array_map('trim', explode(',', $data['repair_info']->item_kit_id));
+            
+            foreach ($kit_ids as $kit_id) {
+                if (!empty($kit_id)) {
+                    $kit_info = $this->item_kit->get_info($kit_id);
+                    if ($kit_info) {
+                        $data['assigned_kits'][] = $kit_info;
+                    }
+                }
+            }
+        }
+
+        return view('repairs/itemkit', $data);
+    }
+
+    public function postItemkit(int $repair_job_id): ResponseInterface
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'You do not have permission to modify this job.'
+            ]);
+        }
+
+        // Get raw array data without FILTER_SANITIZE_NUMBER_INT
+        $item_kit_ids_raw = $this->request->getPost('item_kit_id');
+        
+        // Process the array data
+        if (is_array($item_kit_ids_raw)) {
+            // Clean and validate each ID
+            $cleaned_ids = [];
+            foreach ($item_kit_ids_raw as $id) {
+                $cleaned_id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
+                if (!empty($cleaned_id)) {
+                    $cleaned_ids[] = $cleaned_id;
+                }
+            }
+            $item_kit_id = implode(',', array_filter($cleaned_ids));
+        } else {
+            $item_kit_id = empty($item_kit_ids_raw) ? null : (string)filter_var($item_kit_ids_raw, FILTER_SANITIZE_NUMBER_INT);
+        }
+
+        $repair_data = [
+            'item_kit_id' => $item_kit_id
+        ];
+
+        if ($this->repair->save_value($repair_data, $repair_job_id)) {
+            if (!empty($item_kit_id)) {
+                $existing_info = $this->repair->get_info($repair_job_id);
+                if (empty($existing_info->stock_deducted)) {
+                    $kit_ids = explode(',', $item_kit_id);
+                    foreach ($kit_ids as $kit_id) {
+                        if (!empty(trim($kit_id))) {
+                            $this->deduct_kit_stock((int)trim($kit_id));
+                        }
+                    }
+                    $this->repair->mark_stock_deducted($repair_job_id);
+                }
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Item kit(s) assigned successfully.',
+                'id'      => $repair_job_id
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Could not assign item kit(s).'
+            ]);
+        }
+    }
+
+    private function deduct_kit_stock(int $item_kit_id): void
+    {
+        $kit_items = $this->item_kit_items->get_info($item_kit_id);
+
+        foreach ($kit_items as $kit_item) {
+            if ($kit_item['stock_type'] == '0') {
+                $this->item_quantity->change_quantity(
+                    (int)$kit_item['item_id'],
+                    1,
+                    -1 * (int)$kit_item['quantity']
+                );
+            }
+        }
+    }
+
+    private function upload_condition_photos(): array
+    {
+        $files = $this->request->getFileMultiple('condition_photos');
+
+        if (!$files) {
+            return [];
+        }
+
+        $saved_filenames = [];
+
+        foreach ($files as $file) {
+            if (!$file || !$file->isValid() || $file->hasMoved()) {
+                continue;
+            }
+
+            $new_name = $file->getRandomName();
+            $file->move(FCPATH . 'uploads/repair_photos/', $new_name, true);
+            $saved_filenames[] = $new_name;
+        }
+
+        return $saved_filenames;
+    }
+
+    private function log_status_if_changed(int $repair_job_id, string $new_status): void
+    {
+        $last_status = $this->repair_status_history->get_last_status($repair_job_id);
+        if ($last_status !== $new_status) {
+            $this->repair_status_history->add_entry($repair_job_id, $new_status, $this->employee_model->get_logged_in_employee_info()->person_id);
+        }
+    }
+
+    public function postSave(int $repair_job_id = NEW_ENTRY): ResponseInterface
+    {
+        if ($repair_job_id != NEW_ENTRY && !$this->is_job_accessible($repair_job_id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'You do not have permission to modify this job.'
+            ]);
+        }
+
+        $is_new_job = ($repair_job_id == NEW_ENTRY);
+
+        $job_number = $this->request->getPost('job_number', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+        if ($is_new_job && empty($job_number)) {
+            $job_number = $this->repair->get_next_job_number();
+        }
+
+        $new_status = $this->request->getPost('repair_status', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+        $item_kit_id = $this->request->getPost('item_kit_id', FILTER_SANITIZE_NUMBER_INT);
+        $item_kit_id = empty($item_kit_id) ? null : (int)$item_kit_id;
+
+        $existing_info = $is_new_job ? null : $this->repair->get_info($repair_job_id);
+        $stock_deducted = $is_new_job ? 0 : (int)($existing_info->stock_deducted ?? 0);
+
+        $kept_photos_raw = $this->request->getPost('existing_photos', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
+        $kept_photos = array_filter(array_map('trim', explode(',', $kept_photos_raw)));
+        $newly_uploaded = $this->upload_condition_photos();
+        $condition_photos = implode(',', array_merge($kept_photos, $newly_uploaded));
+
+        $repair_data = [
+            'job_number'                   => $job_number,
+            'date_received'                => $this->request->getPost('date_received', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'arrival_time'                 => $this->request->getPost('arrival_time', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'expected_return_date'         => $this->request->getPost('expected_return_date', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'expected_return_time'         => $this->request->getPost('expected_return_time', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'customer_name'                => $this->request->getPost('customer_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'customer_mobile'              => $this->request->getPost('customer_mobile', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'alternative_number'           => $this->request->getPost('alternative_number', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'brand'                        => $this->request->getPost('brand', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'model'                        => $this->request->getPost('model', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'imei'                         => $this->request->getPost('imei', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'fault_description'            => $this->request->getPost('fault_description', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'condition_photos'             => $condition_photos,
+            'accessory_charger'            => $this->request->getPost('accessory_charger', FILTER_SANITIZE_NUMBER_INT),
+            'accessory_cable'              => $this->request->getPost('accessory_cable', FILTER_SANITIZE_NUMBER_INT),
+            'accessory_cover'              => $this->request->getPost('accessory_cover', FILTER_SANITIZE_NUMBER_INT),
+            'accessory_sim'                => $this->request->getPost('accessory_sim', FILTER_SANITIZE_NUMBER_INT),
+            'accessory_memory_card'        => $this->request->getPost('accessory_memory_card', FILTER_SANITIZE_NUMBER_INT),
+            'estimated_charges'            => $this->request->getPost('estimated_charges', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'advance_payment'              => $this->request->getPost('advance_payment', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'remaining_amount'             => $this->request->getPost('remaining_amount', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'warranty_days'                => $this->request->getPost('warranty_days', FILTER_SANITIZE_NUMBER_INT),
+            'technician_name'              => $this->request->getPost('technician_name', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'item_kit_id'                  => $item_kit_id,
+            'stock_deducted'               => $stock_deducted,
+            'special_note'                 => $this->request->getPost('special_note', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'repair_status'                => $new_status,
+        ];
+
+        if ($this->repair->save_value($repair_data, $repair_job_id)) {
+            $saved_job_id = $is_new_job ? $repair_data['repair_job_id'] : $repair_job_id;
+
+            if ($is_new_job) {
+                $this->repair_status_history->add_entry($saved_job_id, $new_status, $this->employee_model->get_logged_in_employee_info()->person_id);
+            } else {
+                $this->log_status_if_changed($saved_job_id, $new_status);
+            }
+
+            if ($item_kit_id !== null && $stock_deducted == 0) {
+                $this->deduct_kit_stock($item_kit_id);
+                $this->repair->mark_stock_deducted($saved_job_id);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Repair job saved successfully.',
+                'id'      => $saved_job_id
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error saving repair job.'
+            ]);
+        }
+    }
+
+    public function postDeliver(int $repair_job_id): ResponseInterface
+    {
+        if (!$this->is_job_accessible($repair_job_id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'You do not have permission to modify this job.'
+            ]);
+        }
+
+        $repair_data = [
+            'repair_status'                => 'Delivered',
+            'delivery_date'                => $this->request->getPost('delivery_date', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'delivery_time'                => $this->request->getPost('delivery_time', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'remaining_payment_collected'  => $this->request->getPost('remaining_payment_collected', FILTER_SANITIZE_FULL_SPECIAL_CHARS),
+            'customer_signature_confirmed' => 1,
+        ];
+
+        if ($this->repair->save_value($repair_data, $repair_job_id)) {
+            $this->log_status_if_changed($repair_job_id, 'Delivered');
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Repair job marked as delivered.',
+                'id'      => $repair_job_id
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Could not confirm delivery.'
+            ]);
+        }
+    }
+}

@@ -1,0 +1,1420 @@
+<?php
+/**
+ * @var string $controller_name
+ * @var array $modes
+ * @var array $mode
+ * @var array $empty_tables
+ * @var array $selected_table
+ * @var array $stock_locations
+ * @var array $stock_location
+ * @var array $cart
+ * @var bool $items_module_allowed
+ * @var bool $change_price
+ * @var int $customer_id
+ * @var int $customer_discount_type
+ * @var float $customer_discount
+ * @var float $customer_total
+ * @var string $customer_required
+ * @var float|int $item_count
+ * @var float|int $total_units
+ * @var float $subtotal
+ * @var array $taxes
+ * @var float $total
+ * @var float $payments_total
+ * @var float $amount_due
+ * @var bool $payments_cover_total
+ * @var array $payment_options
+ * @var array $selected_payment_type
+ * @var bool $pos_mode
+ * @var array $payments
+ * @var string $mode_label
+ * @var string $comment
+ * @var bool $print_after_sale
+ * @var bool $email_receipt
+ * @var bool $price_work_orders
+ * @var string $invoice_number
+ * @var int $cash_mode
+ * @var float $non_cash_total
+ * @var float $cash_amount_due
+ * @var array $config
+ */
+
+use App\Models\Employee;
+
+?>
+
+<?= view('partial/header') ?>
+
+<?php
+if (isset($error)) {
+    echo '<div class="alert alert-dismissible alert-danger">' . esc($error) . '</div>';
+}
+
+if (!empty($warning)) {
+    echo '<div class="alert alert-dismissible alert-warning">' . esc($warning) . '</div>';
+}
+
+if (isset($success)) {
+    echo '<div class="alert alert-dismissible alert-success">' . esc($success) . '</div>';
+}
+
+helper('url');
+?>
+
+<div id="register_wrapper">
+
+    <!-- Top register controls -->
+    <?= form_open("$controller_name/changeMode", ['id' => 'mode_form', 'class' => 'form-horizontal panel panel-default']) ?>
+        <div class="panel-body form-group">
+            <ul>
+                <li class="pull-left first_li">
+                    <label class="control-label"><?= lang(ucfirst($controller_name) . '.mode') ?></label>
+                </li>
+                <li class="pull-left">
+                    <?= form_dropdown('mode', $modes, $mode, ['onchange' => "$('#mode_form').submit();", 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit']) ?>
+                </li>
+                <li style="display:none;" class="pull-left first_li">
+                    <label class="control-label">Sale Type</label>
+                </li>
+                <li style="display:none;" class="pull-left">
+                    <?= form_dropdown('sale_type', ['cash' => 'Cash Sale', 'credit' => 'Credit Sale'], 'cash', ['id' => 'sale_type', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit']) ?>
+                </li>
+                <?php if ($config['dinner_table_enable']) { ?>
+                    <li class="pull-left first_li">
+                        <label class="control-label"><?= lang(ucfirst($controller_name) . '.table') ?></label>
+                    </li>
+                    <li class="pull-left">
+                        <?= form_dropdown('dinner_table', $empty_tables, $selected_table, ['onchange' => "$('#mode_form').submit();", 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit']) ?>
+                    </li>
+                <?php } ?>
+                <?php if (count($stock_locations) > 1) { ?>
+                    <li class="pull-left">
+                        <label class="control-label"><?= lang(ucfirst($controller_name) . '.stock_location') ?></label>
+                    </li>
+                    <li class="pull-left">
+                        <?= form_dropdown('stock_location', $stock_locations, $stock_location, ['onchange' => "$('#mode_form').submit();", 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit']) ?>
+                    </li>
+                <?php } ?>
+
+                <li class="pull-right">
+                    <button class="btn btn-default btn-sm modal-dlg" id="show_suspended_sales_button" data-href="<?= esc("$controller_name/suspended") ?>"
+                        title="<?= lang(ucfirst($controller_name) . '.suspended_sales') ?>">
+                        <span class="glyphicon glyphicon-align-justify">&nbsp;</span><?= lang(ucfirst($controller_name) . '.suspended_sales') ?>
+                    </button>
+                </li>
+
+                <?php
+                $employee = model(Employee::class);
+                if ($employee->has_grant('reports_sales', session('person_id'))) {
+                ?>
+                    <li class="pull-right">
+                        <?= anchor(
+                            "$controller_name/manage",
+                            '<span class="glyphicon glyphicon-list-alt">&nbsp;</span>' . lang(ucfirst($controller_name) . '.takings'),
+                            array('class' => 'btn btn-primary btn-sm', 'id' => 'sales_takings_button', 'title' => lang(ucfirst($controller_name) . '.takings'))
+                        ) ?>
+                    </li>
+                <?php } ?>
+            </ul>
+        </div>
+    <?= form_close() ?>
+
+<?php $tabindex = 0; ?>
+
+<div id="register_columns" style="display:flex; align-items:flex-start; gap:20px;">
+
+    <!-- Quick Product Grid -->
+    <div id="quick_grid_wrapper" class="panel panel-default">
+        <div class="panel-body">
+            <?= form_open("$controller_name/add", ['id' => 'add_item_form', 'class' => 'form-horizontal panel panel-default']) ?>
+                <div class="panel-body form-group">
+                    <ul>
+                        <li class="pull-left first_li">
+                            <label for="item" class="control-label"><?= lang(ucfirst($controller_name) . '.find_or_scan_item_or_receipt') ?></label>
+                        </li>
+                        <li class="pull-left">
+                            <?= form_input(['name' => 'item', 'id' => 'item', 'class' => 'form-control input-sm', 'size' => '20', 'style' => 'display:inline-block; width:220px;', 'readonly' => 'readonly', 'tabindex' => ++$tabindex]) ?>
+                            <span class="ui-helper-hidden-accessible" role="status"></span>
+                        </li>
+                    </ul>
+                </div>
+            <?= form_close() ?>
+
+            <div id="quick_sale_categories" style="margin-bottom:15px;"></div>
+            <div id="quick_sale_grid" class="row" style="margin:0;"></div>
+        </div>
+    </div>
+
+    <style>
+        .qs-card {
+            cursor: pointer;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 6px;
+            width: 150px;
+            display: inline-block;
+            vertical-align: top;
+            text-align: center;
+            background: var(--panel-bg);
+            transition: transform .1s;
+            box-sizing: border-box;
+        }
+
+        .qs-card:hover {
+            transform: scale(1.03);
+            border-color: #3498db;
+        }
+
+        .qs-card img {
+            width: 100%;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: #444;
+        }
+
+        .qs-card .qs-name {
+            font-weight: bold;
+            margin-top: 6px;
+            font-size: 13px;
+            color: var(--panel-text);
+            overflow-wrap: anywhere;
+        }
+
+        .qs-card .qs-price {
+            color: #2ecc71;
+            font-size: 13px;
+        }
+
+        .qs-cat-btn {
+            margin: 3px;
+        }
+
+        .qs-cat-btn.active {
+            background: #3498db !important;
+            color: #fff !important;
+        }
+    </style>
+
+    <script>
+    $(document).ready(function() {
+        function qsAjaxRefresh($form) {
+            var formData = $form.serialize();
+            var csrfName = <?= json_encode(config('Security')->tokenName) ?>;
+
+            if (formData.indexOf(csrfName + '=') === -1) {
+                var csrfVal = $('input[name="' + csrfName + '"]').first().val();
+
+                if (csrfVal) {
+                    formData += (formData ? '&' : '') + csrfName + '=' + encodeURIComponent(csrfVal);
+                }
+            }
+
+            $.ajax({
+                url: $form.attr('action'),
+                method: ($form.attr('method') || 'POST').toUpperCase(),
+                data: formData,
+                success: function(html) {
+                    var $parsed = $('<div>').html(html);
+                    var newRightColHtml = $parsed.find('#register_right_column').html();
+
+                    if (newRightColHtml !== undefined) {
+                        $('#register_right_column').html(newRightColHtml);
+
+                        $('#register_right_column').find('.selectpicker').each(function() {
+                            var $selectpicker = $(this);
+                            $.fn.selectpicker.call($selectpicker, $selectpicker.data());
+                        });
+
+                        qsBindDynamicEvents();
+                    } else {
+                        window.location.href = "<?= site_url('sales') ?>";
+                    }
+                },
+                error: function(xhr, status, err) {
+                    console.error("qsAjaxRefresh FAILED:", xhr.status, xhr.statusText, xhr.responseText.substring(0, 500));
+                    alert("AJAX FAILED - Status: " + xhr.status + " - check console for details");
+                }
+            });
+        }
+
+        // Make the function available to inline cart update links.
+        window.qsAjaxRefresh = qsAjaxRefresh;
+
+        $(document).on('submit', 'form[id^="cart_"], #select_customer_form, #add_payment_form, #add_item_form', function(e) {
+            e.preventDefault();
+            qsAjaxRefresh($(this));
+        });
+
+        $(document).on('change', '[name="price"],[name="quantity"],[name="discount"],[name="description"],[name="serialnumber"],[name="discounted_total"]', function() {
+            qsAjaxRefresh($(this).parents('tr').prevAll('form:first'));
+        });
+
+        $(document).on('change', '[name="discount_toggle"]', function() {
+            var $form = $('#cart_' + $(this).attr('data-line'));
+            $form.find('input[type="hidden"][name="discount_type"]').remove();
+
+            var input = $('<input>')
+                .attr('type', 'hidden')
+                .attr('name', 'discount_type')
+                .val(($(this).prop('checked')) ? 1 : 0);
+
+            $form.append($(input));
+            qsAjaxRefresh($form);
+        });
+
+        $(document).on('click', 'a[href*="/deleteItem/"], a[href*="/deletePayment/"], a[href*="/removeCustomer"]', function(e) {
+            e.preventDefault();
+
+            var $tempForm = $('<form>')
+                .attr({action: $(this).attr('href'), method: 'GET'})
+                .appendTo('body');
+
+            qsAjaxRefresh($tempForm);
+            $tempForm.remove();
+        });
+
+        function qsBindDynamicEvents() {
+            $('#customer').blur(function() {
+                $(this).val("<?= lang(ucfirst($controller_name) . '.start_typing_customer_name') ?>");
+            });
+
+            $('#customer').click(function() {
+                if ($(this).val().match("<?= lang(ucfirst($controller_name) . '.start_typing_item_name') . '|' . lang(ucfirst($controller_name) . '.start_typing_customer_name') ?>")) {
+                    $(this).val('');
+                }
+            }).dblclick(function() {
+                $(this).autocomplete('search');
+            });
+
+            $('#customer').autocomplete({
+                source: "<?= site_url('customers/suggest') ?>",
+                minChars: 0,
+                delay: 10,
+                select: function(a, ui) {
+                    $(this).val(ui.item.value);
+                    qsAjaxRefresh($('#select_customer_form'));
+                    return false;
+                }
+            });
+
+            $('#customer').keypress(function(e) {
+                if (e.which == 13) {
+                    qsAjaxRefresh($('#select_customer_form'));
+                    return false;
+                }
+            });
+
+            $('.giftcard-input').autocomplete({
+                source: "<?= site_url('giftcards/suggest') ?>",
+                minChars: 0,
+                delay: 10,
+                select: function(a, ui) {
+                    $(this).val(ui.item.value);
+                    qsAjaxRefresh($('#add_payment_form'));
+                    return false;
+                }
+            });
+
+            $('#comment').keyup(function() {
+                $.post("<?= esc(site_url("$controller_name/setComment")) ?>", { comment: $('#comment').val() });
+            });
+
+            $('#sales_print_after_sale').change(function() {
+                $.post("<?= esc(site_url("$controller_name/setPrintAfterSale")) ?>", { sales_print_after_sale: $(this).is(':checked') });
+            });
+
+            $('#price_work_orders').change(function() {
+                $.post("<?= esc(site_url("$controller_name/setPriceWorkOrders")) ?>", { price_work_orders: $(this).is(':checked') });
+            });
+
+            $('#email_receipt').change(function() {
+                $.post("<?= esc(site_url("$controller_name/setEmailReceipt")) ?>", { email_receipt: $(this).is(':checked') });
+            });
+
+            $('#finish_sale_button').click(function() {
+                $('#buttons_form').attr('action', "<?= "$controller_name/complete" ?>");
+                $('#buttons_form').submit();
+            });
+
+            $('#finish_invoice_quote_button').click(function() {
+                $('#buttons_form').attr('action', "<?= "$controller_name/complete" ?>");
+                $('#buttons_form').submit();
+            });
+
+            $('#finish_credit_button').click(function() {
+                if (confirm("Baqi bill Udhar (Credit) par save karna hai?")) {
+                    $('#hidden_sale_type').val('credit');
+                    $('#buttons_form').attr('action', "<?= "$controller_name/complete" ?>");
+                    $('#buttons_form').submit();
+                }
+            });
+
+            $('#suspend_sale_button').click(function() {
+                $('#buttons_form').attr('action', "<?= site_url("$controller_name/suspend") ?>");
+                $('#buttons_form').submit();
+            });
+
+            $('#cancel_sale_button').click(function() {
+                if (confirm("<?= lang(ucfirst($controller_name) . '.confirm_cancel_sale') ?>")) {
+                    $('#buttons_form').attr('action', "<?= site_url("$controller_name/cancel") ?>");
+                    $('#buttons_form').submit();
+                }
+            });
+
+            $('#add_payment_button').click(function() {
+                $('#add_payment_form').find('input[name="complete_after_payment"]').val('0');
+                qsAjaxRefresh($('#add_payment_form'));
+            });
+
+            if ($('#payment_types').length && typeof check_payment_type === 'function') {
+                $('#payment_types').change(check_payment_type);
+            }
+
+            $('#cart_contents input').keypress(function(event) {
+                if (event.which == 13) {
+                    event.preventDefault();
+                    qsAjaxRefresh($(this).parents('tr').prevAll('form:first'));
+                }
+            });
+
+            $('#amount_tendered').keypress(function(event) {
+                if (event.which == 13) {
+                    qsAjaxRefresh($('#add_payment_form'));
+                }
+            });
+
+            if (typeof dialog_support !== 'undefined') {
+                dialog_support.init('a.modal-dlg, button.modal-dlg');
+            }
+        }
+
+        var qsAllItems = [];
+        var qsCurrentCategory = 'All';
+
+        function qsLoadGrid() {
+            $.getJSON("<?= site_url("$controller_name/productGrid") ?>", function(data) {
+                qsAllItems = data;
+                qsRenderCategories();
+                qsRenderGrid();
+            });
+        }
+
+        function qsRenderCategories() {
+            var cats = ['All'];
+
+            qsAllItems.forEach(function(it) {
+                if (it.category && cats.indexOf(it.category) === -1) {
+                    cats.push(it.category);
+                }
+            });
+
+            var html = '<select id="qs_category_select" class="form-control input-sm" style="width:220px; display:inline-block;">';
+
+            cats.forEach(function(c) {
+                var selected = (c === qsCurrentCategory) ? 'selected' : '';
+                html += '<option value="' + c + '" ' + selected + '>' + c + '</option>';
+            });
+
+            html += '</select>';
+            $('#quick_sale_categories').html(html);
+
+            $('#qs_category_select').change(function() {
+                qsCurrentCategory = $(this).val();
+                qsRenderGrid();
+            });
+        }
+
+        function qsRenderGrid() {
+            var filtered = (qsCurrentCategory === 'All')
+                ? qsAllItems
+                : qsAllItems.filter(function(it) {
+                    return it.category === qsCurrentCategory;
+                });
+
+            var html = '';
+
+            filtered.forEach(function(it) {
+                var img = it.image ? it.image : '';
+
+                html += '<div class="qs-card" data-id="' + it.item_id + '" data-name="' + it.name + '">';
+
+                if (img) {
+                    html += '<img src="' + img + '">';
+                } else {
+                    html += '<div style="width:100%;height:90px;background:#444;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#888;">No Image</div>';
+                }
+
+                html += '<div class="qs-name">' + it.name + '</div>';
+                html += '<div class="qs-price">Rs ' + parseFloat(it.price).toFixed(2) + '</div>';
+                html += '</div>';
+            });
+
+            $('#quick_sale_grid').html(html);
+
+            $('.qs-card').click(function() {
+                var itemId = $(this).data('id');
+                $('#item').val(itemId);
+                $('#add_item_form').submit();
+            });
+        }
+
+        qsLoadGrid();
+        qsBindDynamicEvents();
+    });
+
+    $('#sale_type').change(function() {
+        var saleType = $(this).val();
+        $('#hidden_sale_type').val(saleType);
+    });
+
+    $(document).ready(function() {
+        $('#sale_type').trigger('change');
+    });
+    </script>
+
+    <!-- Register right column -->
+    <div id="register_right_column" style="width:100%; max-width:600px; flex-shrink:1; box-sizing:border-box;">
+
+        <?= form_open("$controller_name/selectCustomer", ['id' => 'select_customer_form', 'class' => 'form-horizontal']) ?>
+
+            <?php if (isset($customer)) { ?>
+                <table class="sales_table_100">
+                    <tr>
+                        <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer') ?></th>
+                        <th style="width: 45%; text-align: right;">
+                            <?= anchor("customers/view/$customer_id", esc($customer), ['class' => 'modal-dlg', 'data-btn-submit' => lang('Common.submit'), 'title' => lang('Customers.update')]) ?>
+
+                            <?php if (isset($customer_outstanding_balance) && true): ?>
+                                <br><small class="text-danger" style="font-size: 12px; font-weight: bold;">Udhar: <?= to_currency($customer_outstanding_balance) ?></small>
+                            <?php endif; ?>
+                        </th>
+                    </tr>
+
+                    <?php if (!empty($customer_email)) { ?>
+                        <tr>
+                            <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer_email') ?></th>
+                            <th style="width: 45%; text-align: right;"><?= esc($customer_email) ?></th>
+                        </tr>
+                    <?php } ?>
+
+                    <?php if (!empty($customer_address)) { ?>
+                        <tr>
+                            <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer_address') ?></th>
+                            <th style="width: 45%; text-align: right;"><?= esc($customer_address) ?></th>
+                        </tr>
+                    <?php } ?>
+
+                    <?php if (!empty($customer_location)) { ?>
+                        <tr>
+                            <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer_location') ?></th>
+                            <th style="width: 45%; text-align: right;"><?= esc($customer_location) ?></th>
+                        </tr>
+                    <?php } ?>
+
+                    <tr>
+                        <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer_discount') ?></th>
+                        <th style="width: 45%; text-align: right;"><?= ($customer_discount_type == FIXED) ? to_currency($customer_discount) : $customer_discount . '%' ?></th>
+                    </tr>
+
+                    <?php if ($config['customer_reward_enable']): ?>
+                        <?php if (!empty($customer_rewards)) { ?>
+                            <tr>
+                                <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.rewards_package') ?></th>
+                                <th style="width: 45%; text-align: right;"><?= esc($customer_rewards['package_name']) ?></th>
+                            </tr>
+                            <tr>
+                                <th style="width: 55%;"><?= lang('Customers.available_points') ?></th>
+                                <th style="width: 45%; text-align: right;"><?= esc($customer_rewards['points']) ?></th>
+                            </tr>
+                        <?php } ?>
+                    <?php endif; ?>
+
+                    <tr>
+                        <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer_total') ?></th>
+                        <th style="width: 45%; text-align: right;"><?= to_currency($customer_total) ?></th>
+                    </tr>
+
+                    <?php if (!empty($mailchimp_info)) { ?>
+                        <tr>
+                            <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.customer_mailchimp_status') ?></th>
+                            <th style="width: 45%; text-align: right;"><?= esc($mailchimp_info['status']) ?></th>
+                        </tr>
+                    <?php } ?>
+                </table>
+
+                <?= anchor(
+                    "$controller_name/removeCustomer",
+                    '<span class="glyphicon glyphicon-remove">&nbsp;</span>' . lang('Common.remove') . ' ' . lang('Customers.customer'),
+                    ['class' => 'btn btn-danger btn-sm', 'id' => 'remove_customer_button', 'title' => lang('Common.remove') . ' ' . lang('Customers.customer')]
+                ) ?>
+
+            <?php } else { ?>
+
+                <div class="form-group" id="select_customer">
+                    <label id="customer_label" for="customer" class="control-label">
+                        <?= lang(ucfirst($controller_name) . '.select_customer') . esc(" $customer_required") ?>
+                    </label>
+
+                    <?= form_input(['name' => 'customer', 'id' => 'customer', 'class' => 'form-control input-sm', 'value' => lang(ucfirst($controller_name) . '.start_typing_customer_name')]) ?>
+
+                    <button class="btn btn-info btn-sm modal-dlg"
+                        data-btn-submit="<?= lang('Common.submit') ?>"
+                        data-href="<?= "customers/view" ?>"
+                        title="<?= lang(ucfirst($controller_name) . ".new_customer") ?>">
+                        <span class="glyphicon glyphicon-user">&nbsp;</span><?= lang(ucfirst($controller_name) . ".new_customer") ?>
+                    </button>
+
+                    <button class="btn btn-default btn-sm modal-dlg"
+                        id="show_keyboard_help"
+                        data-href="<?= esc("$controller_name/salesKeyboardHelp") ?>"
+                        title="<?= lang(ucfirst($controller_name) . '.key_title') ?>">
+                        <span class="glyphicon glyphicon-share-alt">&nbsp;</span><?= lang(ucfirst($controller_name) . '.key_help') ?>
+                    </button>
+                </div>
+
+            <?php } ?>
+
+        <?= form_close() ?>
+
+        <!-- Sale Items List: horizontal scrolling is limited to this table -->
+        <div class="register-cart-scroll">
+            <table class="sales_table_100" id="register">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;"><?= lang('Common.delete') ?></th>
+                        <th style="width: 15%;"><?= lang(ucfirst($controller_name) . '.item_number') ?></th>
+                        <th style="width: 30%;"><?= lang(ucfirst($controller_name) . '.item_name') ?></th>
+                        <th style="width: 10%;"><?= lang(ucfirst($controller_name) . '.price') ?></th>
+                        <th style="width: 10%;"><?= lang(ucfirst($controller_name) . '.quantity') ?></th>
+                        <th style="width: 15%;"><?= lang(ucfirst($controller_name) . '.discount') ?></th>
+                        <th style="width: 10%;"><?= lang(ucfirst($controller_name) . '.total') ?></th>
+                        <th style="width: 5%;"><?= lang(ucfirst($controller_name) . '.update') ?></th>
+                    </tr>
+                </thead>
+
+                <tbody id="cart_contents">
+                    <?php if (count($cart) == 0) { ?>
+                        <tr>
+                            <td colspan="8">
+                                <div class="alert alert-dismissible alert-info"><?= lang(ucfirst($controller_name) . '.no_items_in_cart') ?></div>
+                            </td>
+                        </tr>
+                    <?php
+                    } else {
+                        foreach (array_reverse($cart, true) as $line => $item) {
+                    ?>
+                        <?= form_open("$controller_name/editItem/$line", ['class' => 'form-horizontal', 'id' => "cart_$line"]) ?>
+                            <tr>
+                                <td>
+                                    <?php
+                                    echo anchor("$controller_name/deleteItem/$line", '<span class="glyphicon glyphicon-trash"></span>');
+                                    echo form_input(['type' => 'hidden', 'name' => 'location', 'value' => (string)$item['item_location'], 'form' => "cart_$line"]);
+                                    echo form_input(['type' => 'hidden', 'name' => 'item_id', 'value' => $item['item_id'], 'form' => "cart_$line"]);
+                                    ?>
+                                </td>
+
+                                <?php if ($item['item_type'] == ITEM_TEMP) { ?>
+                                    <td><?= form_input(['name' => 'item_number', 'id' => 'item_number', 'class' => 'form-control input-sm', 'value' => $item['item_number'], 'tabindex' => ++$tabindex, 'form' => "cart_$line"]) ?></td>
+                                    <td style="text-align: center;">
+                                        <?= form_input(['name' => 'name', 'id' => 'name', 'class' => 'form-control input-sm', 'value' => $item['name'], 'tabindex' => ++$tabindex, 'form' => "cart_$line"]) ?>
+                                    </td>
+                                <?php } else { ?>
+                                    <td><?= esc($item['item_number']) ?></td>
+                                    <td style="text-align: center;">
+                                        <?= esc($item['name']) . ' [' . esc($item['unit_name'] ?? 'Piece') . '] ' . esc(implode(' ', [$item['attribute_values'], $item['attribute_dtvalues']])) ?>
+                                        <br>
+                                        <?php if ($item['stock_type'] == '0'): echo '[' . to_quantity_decimals($item['in_stock']) . ' in ' . esc($item['stock_name']) . ']';
+                                        endif; ?>
+                                    </td>
+                                <?php } ?>
+
+                                <td>
+                                    <?php
+                                    if ($items_module_allowed && $change_price) {
+                                        echo form_input(['name' => 'price', 'class' => 'form-control input-sm', 'value' => to_currency_no_money($item['price']), 'tabindex' => ++$tabindex, 'onClick' => 'this.select();', 'form' => "cart_$line"]);
+                                    } else {
+                                        echo to_currency($item['price']);
+                                        echo form_input(['type' => 'hidden', 'name' => 'price', 'value' => to_currency_no_money($item['price']), 'form' => "cart_$line"]);
+                                    }
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <?php
+                                    if ($item['is_serialized']) {
+                                        echo to_quantity_decimals($item['quantity']);
+                                        echo form_input(['type' => 'hidden', 'name' => 'quantity', 'value' => $item['quantity'], 'form' => "cart_$line"]);
+                                    } else {
+                                        echo form_input(['name' => 'quantity', 'class' => 'form-control input-sm', 'value' => to_quantity_decimals($item['quantity']), 'tabindex' => ++$tabindex, 'onClick' => 'this.select();', 'form' => "cart_$line"]);
+                                    }
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <div class="input-group">
+                                        <?= form_input(['name' => 'discount', 'class' => 'form-control input-sm', 'value' => $item['discount_type'] ? to_currency_no_money($item['discount']) : to_decimals($item['discount']), 'tabindex' => ++$tabindex, 'onClick' => 'this.select();', 'form' => "cart_$line"]) ?>
+                                        <span class="input-group-btn">
+                                            <?= form_checkbox(['id' => 'discount_toggle', 'name' => 'discount_toggle', 'value' => 1, 'data-toggle' => "toggle", 'data-size' => 'small', 'data-onstyle' => 'success', 'data-on' => '<b>' . $config['currency_symbol'] . '</b>', 'data-off' => '<b>%</b>', 'data-line' => $line, 'checked' => $item['discount_type'] == 1, 'form' => "cart_$line"]) ?>
+                                        </span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <?php
+                                    if ($item['item_type'] == ITEM_AMOUNT_ENTRY) {
+                                        echo form_input(['name' => 'discounted_total', 'class' => 'form-control input-sm', 'value' => to_currency_no_money($item['discounted_total']), 'tabindex' => ++$tabindex, 'onClick' => 'this.select();', 'form' => "cart_$line"]);
+                                    } else {
+                                        echo to_currency($item['discounted_total']);
+                                    }
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <a href="javascript:void(0);" onclick="qsAjaxRefresh($('#<?= "cart_$line" ?>'));" title="<?= lang(ucfirst($controller_name) . '.update') ?>">
+                                        <span class="glyphicon glyphicon-refresh"></span>
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <?php if ($item['item_type'] == ITEM_TEMP) { ?>
+                                    <td><?= form_input(['type' => 'hidden', 'name' => 'item_id', 'value' => $item['item_id'], 'form' => "cart_$line"]) ?></td>
+                                    <td style="text-align: center;" colspan="6">
+                                        <?= form_input(['name' => 'item_description', 'id' => 'item_description', 'class' => 'form-control input-sm', 'value' => $item['description'], 'tabindex' => ++$tabindex, 'form' => "cart_$line"]) ?>
+                                    </td>
+                                    <td></td>
+                                <?php } else { ?>
+                                    <td>&nbsp;</td>
+                                    <?php if ($item['allow_alt_description']) { ?>
+                                        <td style="color: #2F4F4F;"><?= lang(ucfirst($controller_name) . '.description_abbrv') ?></td>
+                                    <?php } ?>
+
+                                    <td colspan="2" style="text-align: left;">
+                                        <?php
+                                        if ($item['allow_alt_description']) {
+                                            echo form_input(['name' => 'description', 'class' => 'form-control input-sm', 'value' => $item['description'], 'onClick' => 'this.select();', 'form' => "cart_$line"]);
+                                        } else {
+                                            if ($item['description'] != '') {
+                                                echo esc($item['description']);
+                                                echo form_input(['type' => 'hidden', 'name' => 'description', 'value' => $item['description'], 'form' => "cart_$line"]);
+                                            } else {
+                                                echo lang(ucfirst($controller_name) . '.no_description');
+                                                echo form_input(['type' => 'hidden', 'name' => 'description', 'value' => '', 'form' => "cart_$line"]);
+                                            }
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>&nbsp;</td>
+                                    <td style="color: #2F4F4F;">
+                                        <?php
+                                        if ($item['is_serialized']) {
+                                            echo lang(ucfirst($controller_name) . '.serial');
+                                        }
+                                        ?>
+                                    </td>
+                                    <td colspan="4" style="text-align: left;">
+                                        <?php
+                                        if ($item['is_serialized']) {
+                                            echo form_input(['name' => 'serialnumber', 'class' => 'form-control input-sm', 'value' => $item['serialnumber'], 'onClick' => 'this.select();', 'form' => "cart_$line"]);
+                                        } else {
+                                            echo form_input(['type' => 'hidden', 'name' => 'serialnumber', 'value' => '', 'form' => "cart_$line"]);
+                                        }
+                                        ?>
+                                    </td>
+                                <?php } ?>
+                            </tr>
+                        <?= form_close() ?>
+                    <?php
+                        }
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Overall Sale -->
+        <div id="overall_sale" class="panel panel-default">
+            <div class="panel-body">
+
+                <table class="sales_table_100" id="sale_totals">
+                    <tr>
+                        <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.quantity_of_items', [$item_count]) ?></th>
+                        <th style="width: 45%; text-align: right;"><?= $total_units ?></th>
+                    </tr>
+                    <tr>
+                        <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.sub_total') ?></th>
+                        <th style="width: 45%; text-align: right;"><?= to_currency($subtotal) ?></th>
+                    </tr>
+                    <?php foreach ($taxes as $tax_group_index => $tax) { ?>
+                        <tr>
+                            <th style="width: 55%;"><?= (float)$tax['tax_rate'] . '% ' . $tax['tax_group'] ?></th>
+                            <th style="width: 45%; text-align: right;"><?= to_currency_tax($tax['sale_tax_amount']) ?></th>
+                        </tr>
+                    <?php } ?>
+                    <tr>
+                        <th style="width: 55%; font-size: 150%"><?= lang(ucfirst($controller_name) . '.total') ?></th>
+                        <th style="width: 45%; font-size: 150%; text-align: right;"><span id="sale_total"><?= to_currency($total) ?></span></th>
+                    </tr>
+                </table>
+
+                <?php if (count($cart) > 0) { ?>
+                    <table class="sales_table_100" id="payment_totals">
+                        <tr>
+                            <th style="width: 55%;"><?= lang(ucfirst($controller_name) . '.payments_total') ?></th>
+                            <th style="width: 45%; text-align: right;"><?= to_currency($payments_total) ?></th>
+                        </tr>
+                        <tr>
+                            <th style="width: 55%; font-size: 120%"><?= lang(ucfirst($controller_name) . '.amount_due') ?></th>
+                            <th style="width: 45%; font-size: 120%; text-align: right;"><span id="sale_amount_due"><?= to_currency($amount_due) ?></span></th>
+                        </tr>
+                    </table>
+
+                    <div id="payment_details">
+                        <?php if ($payments_cover_total) { ?>
+                            <?= form_open("$controller_name/addPayment", ['id' => 'add_payment_form', 'class' => 'form-horizontal']) ?>
+                                <input type="hidden" name="complete_after_payment" value="0">
+                                <table class="sales_table_100">
+                                    <tr>
+                                        <td><?= lang(ucfirst($controller_name) . '.payment') ?></td>
+                                        <td>
+                                            <?= form_dropdown('payment_type', $payment_options, $selected_payment_type, ['id' => 'payment_types', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit', 'disabled' => 'disabled']) ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><span id="amount_tendered_label"><?= lang(ucfirst($controller_name) . '.amount_tendered') ?></span></td>
+                                        <td>
+                                            <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm disabled', 'disabled' => 'disabled', 'value' => '0', 'size' => '5', 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
+                                        </td>
+                                    </tr>
+                                </table>
+                            <?= form_close() ?>
+
+                            <?php
+                            if ($pos_mode) {
+                                $due_payment = false;
+
+                                if (count($payments) > 0) {
+                                    foreach ($payments as $payment_id => $payment) {
+                                        if ($payment['payment_type'] == lang(ucfirst($controller_name) . '.due')) {
+                                            $due_payment = true;
+                                        }
+                                    }
+                                }
+
+                                if (!$due_payment || ($due_payment && isset($customer))) {
+                            ?>
+                                    <div class="btn btn-sm btn-success pull-right" id="finish_sale_button" tabindex="<?= ++$tabindex ?>">
+                                        <span class="glyphicon glyphicon-ok">&nbsp;</span><?= lang(ucfirst($controller_name) . '.complete_sale') ?>
+                                    </div>
+                            <?php
+                                }
+                            }
+                            ?>
+                        <?php } else { ?>
+
+                            <?= form_open("$controller_name/addPayment", ['id' => 'add_payment_form', 'class' => 'form-horizontal']) ?>
+                                <input type="hidden" name="complete_after_payment" value="0">
+                                <table class="sales_table_100">
+                                    <tr>
+                                        <td><?= lang(ucfirst($controller_name) . '.payment') ?></td>
+                                        <td>
+                                            <?= form_dropdown('payment_type', $payment_options, $selected_payment_type, ['id' => 'payment_types', 'class' => 'selectpicker show-menu-arrow', 'data-style' => 'btn-default btn-sm', 'data-width' => 'fit']) ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><span id="amount_tendered_label"><?= lang(ucfirst($controller_name) . '.amount_tendered') ?></span></td>
+                                        <td>
+                                            <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm non-giftcard-input', 'value' => to_currency_no_money($amount_due), 'size' => '5', 'tabindex' => ++$tabindex, 'onClick' => 'this.select();']) ?>
+                                            <?= form_input(['name' => 'amount_tendered', 'id' => 'amount_tendered', 'class' => 'form-control input-sm giftcard-input', 'disabled' => true, 'value' => to_currency_no_money($amount_due), 'size' => '5', 'readonly' => 'readonly', 'tabindex' => ++$tabindex]) ?>
+                                        </td>
+                                    </tr>
+                                </table>
+                            <?= form_close() ?>
+
+                            <div class="btn btn-sm btn-success pull-right" id="add_payment_button" tabindex="<?= ++$tabindex ?>">
+                                <span class="glyphicon glyphicon-credit-card">&nbsp;</span><?= lang(ucfirst($controller_name) . '.add_payment') ?>
+                            </div>
+
+                        <?php } ?>
+
+                        <?php if (count($payments) > 0) { ?>
+                            <table class="sales_table_100" id="payment_register">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%;"><?= lang('Common.delete') ?></th>
+                                        <th style="width: 60%;"><?= lang(ucfirst($controller_name) . '.payment_type') ?></th>
+                                        <th style="width: 20%;"><?= lang(ucfirst($controller_name) . '.payment_amount') ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payment_contents">
+                                    <?php foreach ($payments as $payment_id => $payment) { ?>
+                                        <tr>
+                                            <td><?= anchor("$controller_name/deletePayment/". esc(base64url_encode($payment_id), 'url'), '<span class="glyphicon glyphicon-trash"></span>') ?></td>
+                                            <td><?= $payment['payment_type'] ?></td>
+                                            <td style="text-align: right;"><?= to_currency($payment['payment_amount']) ?></td>
+                                        </tr>
+                                    <?php } ?>
+                                </tbody>
+                            </table>
+                        <?php } ?>
+                    </div>
+
+                    <?= form_open("$controller_name/cancel", ['id' => 'buttons_form']) ?>
+                        <input type="hidden" name="sale_type" id="hidden_sale_type" value="cash">
+                        <div class="form-group" id="buttons_sale">
+                            <div class="btn btn-sm btn-default pull-left" id="suspend_sale_button">
+                                <span class="glyphicon glyphicon-align-justify">&nbsp;</span><?= lang(ucfirst($controller_name) . '.suspend_sale') ?>
+                            </div>
+
+                            <?php if ($pos_mode && isset($customer) && !$payments_cover_total) { ?>
+                                <div class="btn btn-sm btn-info" id="finish_credit_button">
+                                    <span class="glyphicon glyphicon-book">&nbsp;</span>Udhar (Credit)
+                                </div>
+                            <?php } ?>
+
+                            <?php if (!$pos_mode && isset($customer)) { ?>
+                                <div class="btn btn-sm btn-success" id="finish_invoice_quote_button">
+                                    <span class="glyphicon glyphicon-ok">&nbsp;</span><?= esc($mode_label) ?>
+                                </div>
+                            <?php } ?>
+
+                            <div class="btn btn-sm btn-danger pull-right" id="cancel_sale_button">
+                                <span class="glyphicon glyphicon-remove">&nbsp;</span><?= lang(ucfirst($controller_name) . '.cancel_sale') ?>
+                            </div>
+                        </div>
+                    <?= form_close() ?>
+
+                    <?php if ($payments_cover_total || !$pos_mode) { ?>
+                        <div class="container-fluid">
+                            <div class="no-gutter row">
+                                <div class="form-group form-group-sm">
+                                    <div class="col-xs-12">
+                                        <?= form_label(lang('Common.comments'), 'comments', ['class' => 'control-label', 'id' => 'comment_label', 'for' => 'comment']) ?>
+                                        <?= form_textarea(['name' => 'comment', 'id' => 'comment', 'class' => 'form-control input-sm', 'value' => $comment, 'rows' => '2']) ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="form-group form-group-sm">
+                                    <div class="col-xs-6">
+                                        <label for="sales_print_after_sale" class="control-label checkbox">
+                                            <?= form_checkbox(['name' => 'sales_print_after_sale', 'id' => 'sales_print_after_sale', 'value' => 1, 'checked' => $print_after_sale]) ?>
+                                            <?= lang(ucfirst($controller_name) . '.print_after_sale') ?>
+                                        </label>
+                                    </div>
+
+                                    <?php if (!empty($customer_email)) { ?>
+                                        <div class="col-xs-6">
+                                            <label for="email_receipt" class="control-label checkbox">
+                                                <?= form_checkbox(['name' => 'email_receipt', 'id' => 'email_receipt', 'value' => 1, 'checked' => $email_receipt]) ?>
+                                                <?= lang(ucfirst($controller_name) . '.email_receipt') ?>
+                                            </label>
+                                        </div>
+                                    <?php } ?>
+
+                                    <?php if ($mode == 'sale_work_order') { ?>
+                                        <div class="col-xs-6">
+                                            <label for="price_work_orders" class="control-label checkbox">
+                                                <?= form_checkbox(['name' => 'price_work_orders', 'id' => 'price_work_orders', 'value' => 1, 'checked' => $price_work_orders]) ?>
+                                                <?= lang(ucfirst($controller_name) . '.include_prices') ?>
+                                            </label>
+                                        </div>
+                                    <?php } ?>
+                                </div>
+                            </div>
+
+                            <?php if (($mode == 'sale_invoice') && $config['invoice_enable']) { ?>
+                                <div class="row">
+                                    <div class="form-group form-group-sm">
+                                        <div class="col-xs-6">
+                                            <label for="sales_invoice_number" class="control-label checkbox">
+                                                <?= lang(ucfirst($controller_name) . '.invoice_enable') ?>
+                                            </label>
+                                        </div>
+
+                                        <div class="col-xs-6">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-addon input-sm">#</span>
+                                                <?= form_input(['name' => 'sales_invoice_number', 'id' => 'sales_invoice_number', 'class' => 'form-control input-sm', 'value' => $invoice_number]) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                        </div>
+                    <?php } ?>
+                <?php } ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    const keyboardShortcuts = <?= json_encode($keyboardShortcuts ?? []) ?>;
+    const paymentsCoverTotal = <?= json_encode((bool) $payments_cover_total) ?>;
+
+    const shortcutCodes = {
+        items: keyboardShortcuts?.items?.code ?? null,
+        customers: keyboardShortcuts?.customers?.code ?? null,
+        suspend: keyboardShortcuts?.suspend?.code ?? null,
+        suspended: keyboardShortcuts?.suspended?.code ?? null,
+        amount: keyboardShortcuts?.amount?.code ?? null,
+        payment: keyboardShortcuts?.payment?.code ?? null,
+        complete: keyboardShortcuts?.complete?.code ?? null,
+        finish: keyboardShortcuts?.finish?.code ?? null,
+        help: keyboardShortcuts?.help?.code ?? null,
+        cancel: keyboardShortcuts?.cancel?.code ?? null
+    };
+
+    function check_payment_type() {
+        var cash_mode = <?= json_encode($cash_mode) ?>;
+
+        if ($("#payment_types").val() == "<?= lang(ucfirst($controller_name) . '.giftcard') ?>") {
+            $("#sale_total").html("<?= to_currency($total) ?>");
+            $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
+            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.giftcard_number') ?>");
+            $("#amount_tendered:enabled").val('').focus();
+            $(".giftcard-input").attr('disabled', false);
+            $(".non-giftcard-input").attr('disabled', true);
+            $(".giftcard-input:enabled").val('').focus();
+        } else if (($("#payment_types").val() == "<?= lang(ucfirst($controller_name) . '.cash') ?>" && cash_mode == '1')) {
+            $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
+            $("#sale_amount_due").html("<?= to_currency($cash_amount_due) ?>");
+            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
+            $("#amount_tendered:enabled").val("<?= to_currency_no_money($cash_amount_due) ?>");
+            $(".giftcard-input").attr('disabled', true);
+            $(".non-giftcard-input").attr('disabled', false);
+        } else {
+            $("#sale_total").html("<?= to_currency($non_cash_total) ?>");
+            $("#sale_amount_due").html("<?= to_currency($amount_due) ?>");
+            $("#amount_tendered_label").html("<?= lang(ucfirst($controller_name) . '.amount_tendered') ?>");
+            $("#amount_tendered:enabled").val("<?= to_currency_no_money($amount_due) ?>");
+            $(".giftcard-input").attr('disabled', true);
+            $(".non-giftcard-input").attr('disabled', false);
+        }
+    }
+
+    document.body.onkeyup = function(event) {
+        if ($(event.target).closest('.modal').length || $('.modal.in').length) {
+            return;
+        }
+
+        if (event.altKey) {
+            switch (event.keyCode) {
+                case shortcutCodes.items:
+                    $("#item").focus();
+                    $("#item").select();
+                    break;
+                case shortcutCodes.customers:
+                    $("#customer").focus();
+                    $("#customer").select();
+                    break;
+                case shortcutCodes.suspend:
+                    $("#suspend_sale_button").click();
+                    break;
+                case shortcutCodes.suspended:
+                    $("#show_suspended_sales_button").click();
+                    break;
+                case shortcutCodes.amount:
+                    $("#amount_tendered").focus();
+                    $("#amount_tendered").select();
+                    break;
+                case shortcutCodes.payment:
+                    $("#add_payment_button").click();
+                    break;
+                case shortcutCodes.complete:
+                    if (paymentsCoverTotal && $("#finish_sale_button").length) {
+                        $("#finish_sale_button").click();
+                    } else {
+                        $("#add_payment_button").click();
+                    }
+                    break;
+                case shortcutCodes.finish:
+                    $("#finish_invoice_quote_button").click();
+                    break;
+                case shortcutCodes.help:
+                    $("#show_keyboard_help").click();
+                    break;
+            }
+        }
+
+        switch (event.keyCode) {
+            case shortcutCodes.cancel:
+                $("#cancel_sale_button").click();
+                break;
+        }
+    };
+
+    $('#sale_type').change(function() {
+        var saleType = $(this).val();
+        $('#hidden_sale_type').val(saleType);
+    });
+
+    $(document).ready(function() {
+        $('#sale_type').trigger('change');
+    });
+</script>
+
+<style>
+    /* Register layout */
+    #register_wrapper {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #register_columns {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        float: none !important;
+        box-sizing: border-box !important;
+    }
+
+    #quick_grid_wrapper {
+        flex: 1 1 0% !important;
+        min-width: 0 !important;
+        width: auto !important;
+        max-width: 100% !important;
+        float: none !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #register_right_column {
+        flex: 0 0 600px !important;
+        width: 600px !important;
+        max-width: 600px !important;
+        min-width: 0 !important;
+        float: none !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    #add_item_form {
+        width: 100% !important;
+        max-width: 100% !important;
+        float: none !important;
+        clear: none !important;
+        margin: 0 0 15px 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #add_item_form #item {
+        max-width: 100%;
+    }
+
+    #overall_sale {
+        width: 100% !important;
+        max-width: 100% !important;
+        float: none !important;
+        clear: none !important;
+        box-sizing: border-box !important;
+    }
+
+    #quick_sale_categories {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 5px !important;
+        max-width: 100% !important;
+    }
+
+    #quick_sale_grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    .qs-cat-btn {
+        display: inline-block !important;
+    }
+
+    /* Cart-only horizontal scrolling */
+    .register-cart-scroll {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        box-sizing: border-box !important;
+    }
+
+    #register_right_column .register-cart-scroll > table#register {
+        display: table !important;
+        width: 700px !important;
+        min-width: 700px !important;
+        max-width: none !important;
+        table-layout: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Customer details */
+    #register_right_column #select_customer {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #register_right_column #select_customer .form-control {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    @media (max-width: 767px) {
+        /* Proper page spacing: left/right padding on the whole register */
+        #register_wrapper {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-top: 8px !important;
+            padding-bottom: 16px !important;
+        }
+
+        #register_wrapper,
+        #register_columns,
+        #quick_grid_wrapper,
+        #register_right_column,
+        #overall_sale {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        #register_right_column {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        #register_columns {
+            flex-direction: column !important;
+            flex-wrap: nowrap !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+        }
+
+        #quick_grid_wrapper,
+        #register_right_column {
+            flex: 0 0 auto !important;
+            float: none !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #register_right_column {
+            overflow: visible !important;
+        }
+
+        /* Top controls (mode, suspended, takings) wrap neatly */
+        #mode_form {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #mode_form .panel-body {
+            padding: 10px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #mode_form ul {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 8px !important;
+            list-style: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        #mode_form ul li {
+            float: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        #mode_form ul li .btn {
+            margin: 0 !important;
+        }
+
+        /* Quick grid panel spacing */
+        #quick_grid_wrapper > .panel-body {
+            padding: 10px !important;
+        }
+
+        #add_item_form {
+            margin-bottom: 10px !important;
+        }
+
+        #add_item_form > .panel-body {
+            padding: 10px !important;
+        }
+
+        #add_item_form ul {
+            list-style: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Quick product cards: two per row, fit the screen */
+        #quick_sale_grid {
+            margin: 0 -4px !important;
+        }
+
+        #quick_sale_grid .qs-card {
+            width: calc(50% - 12px) !important;
+            margin: 6px !important;
+        }
+
+        /* Customer input and buttons wrap instead of being clipped */
+        #register_right_column #select_customer {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            gap: 8px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #register_right_column #select_customer #customer_label {
+            display: block !important;
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            text-align: left !important;
+        }
+
+        #register_right_column #select_customer #customer {
+            display: block !important;
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+        }
+
+        #register_right_column #select_customer button {
+            display: inline-flex !important;
+            flex: 0 1 auto !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+            margin: 0 !important;
+        }
+
+        #register_right_column #remove_customer_button {
+            max-width: 100% !important;
+            white-space: normal !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* Only the cart table scrolls horizontally */
+        #register_right_column .register-cart-scroll {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            margin-top: 10px !important;
+            margin-bottom: 12px !important;
+        }
+
+        #register_right_column .register-cart-scroll > table#register {
+            width: 700px !important;
+            min-width: 700px !important;
+            max-width: none !important;
+            table-layout: auto !important;
+        }
+
+        #register_right_column #overall_sale {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #register_right_column #overall_sale > .panel-body {
+            padding: 10px !important;
+        }
+
+        #register_right_column #overall_sale table {
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
+        }
+
+        #register_right_column #overall_sale .container-fluid {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        #register_right_column #overall_sale .container-fluid .row,
+        #register_right_column #overall_sale .container-fluid .form-group {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #register_right_column #overall_sale #comment {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        #register_right_column #overall_sale #comment_label {
+            display: block !important;
+            text-align: left !important;
+        }
+
+        #quick_sale_categories {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        #qs_category_select {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        #add_item_form #item {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        #buttons_sale {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        #buttons_sale .btn {
+            float: none !important;
+            max-width: 100% !important;
+            white-space: normal !important;
+        }
+    }
+</style>
+
+<?= view('partial/footer') ?>
