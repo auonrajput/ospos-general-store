@@ -208,9 +208,100 @@
         color: var(--gs-text);
     }
 
+    /* ===== Tables Section ===== */
+    .gs-tables-section {
+        margin-top: 32px;
+    }
+
+    .gs-tables-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 18px;
+    }
+
+    .gs-table-card {
+        background: #E8F3E9;
+        border: 1px solid var(--gs-border);
+        border-radius: 13px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+
+    .gs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .gs-table thead th {
+        text-align: left;
+        padding: 10px 12px;
+        color: var(--gs-muted);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 2px solid var(--gs-border);
+    }
+
+    .gs-table tbody td {
+        padding: 11px 12px;
+        border-bottom: 1px solid #D5E8D9;
+        color: var(--gs-text);
+    }
+
+    .gs-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .gs-table tbody tr:hover {
+        background: #DCEFE1;
+    }
+
+    .gs-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .gs-badge-green {
+        background: #D5EAD9;
+        color: #2D6A4F;
+    }
+
+    .gs-unit-tag {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 2px 8px;
+        background: #DCEFE1;
+        color: var(--gs-muted);
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .gs-stock-warn {
+        color: #dc2626;
+        font-weight: 700;
+    }
+
+    .gs-empty-state {
+        padding: 24px 12px;
+        text-align: center;
+        color: var(--gs-muted);
+        font-size: 13px;
+    }
+
     @media (max-width: 991px) {
         #dashboard_widgets {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .gs-tables-grid {
+            grid-template-columns: 1fr;
         }
     }
 
@@ -235,6 +326,15 @@
 
         .gs-card .dash-value {
             font-size: 25px;
+        }
+
+        .gs-table {
+            font-size: 12px;
+        }
+
+        .gs-table thead th,
+        .gs-table tbody td {
+            padding: 8px 8px;
         }
     }
 </style>
@@ -420,7 +520,149 @@
             <div class="dash-label">Total Customers</div>
         </div>
 
+        <!-- Total Products -->
+        <div class="gs-card gs-blue">
+            <div class="gs-card-top">
+                <div class="gs-card-icon">
+                    <i class="glyphicon glyphicon-tags"></i>
+                </div>
+            </div>
+
+            <div class="dash-value">
+                <?= (int) $dashboard['total_products'] ?>
+            </div>
+
+            <div class="dash-label">Total Products</div>
+        </div>
+
+        <!-- Total Stock Value -->
+        <div class="gs-card gs-purple">
+            <div class="gs-card-top">
+                <div class="gs-card-icon">
+                    <i class="glyphicon glyphicon-briefcase"></i>
+                </div>
+            </div>
+
+            <div class="dash-value">
+                <?= to_currency($dashboard['total_stock_value']) ?>
+            </div>
+
+            <div class="dash-label">Total Stock Value</div>
+        </div>
+
     </div>
+
+    <!-- ===== Tables Section ===== -->
+    <div class="gs-tables-section">
+
+        <h3 class="gs-section-title">
+            <i class="glyphicon glyphicon-time"></i> Recent Sales
+        </h3>
+
+        <div class="gs-table-card">
+            <?php if (!empty($dashboard['recent_sales'])): ?>
+                <table class="gs-table">
+                    <thead>
+                        <tr>
+                            <th>Sale ID</th>
+                            <th>Date & Time</th>
+                            <th>Customer</th>
+                            <th>Payment</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($dashboard['recent_sales'] as $sale): ?>
+                            <tr>
+                                <td>#<?= (int) $sale['sale_id'] ?></td>
+                                <td><?= esc($sale['sale_time']) ?></td>
+                                <td><?= esc($sale['customer_name']) ?></td>
+                                <td><span class="gs-badge gs-badge-green"><?= esc($sale['payment_type']) ?></span></td>
+                                <td style="text-align: right;"><?= to_currency($sale['sale_total']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <div class="gs-empty-state">No sales yet. Start selling to see recent transactions here.</div>
+            <?php endif; ?>
+        </div>
+
+        <div class="gs-tables-grid">
+
+            <div>
+                <h3 class="gs-section-title">
+                    <i class="glyphicon glyphicon-fire"></i> Top Selling Products
+                </h3>
+
+                <div class="gs-table-card">
+                    <?php if (!empty($dashboard['top_selling'])): ?>
+                        <table class="gs-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th style="text-align: right;">Qty Sold</th>
+                                    <th style="text-align: right;">Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($dashboard['top_selling'] as $product): ?>
+                                    <tr>
+                                        <td>
+                                            <?= esc($product['name']) ?>
+                                            <span class="gs-unit-tag"><?= esc($product['unit_name']) ?></span>
+                                        </td>
+                                        <td style="text-align: right;"><?= (int) $product['total_qty'] ?></td>
+                                        <td style="text-align: right;"><?= to_currency($product['total_revenue']) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="gs-empty-state">No sales data yet.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="gs-section-title">
+                    <i class="glyphicon glyphicon-alert"></i> Low Stock Items
+                </h3>
+
+                <div class="gs-table-card">
+                    <?php if (!empty($dashboard['low_stock_items'])): ?>
+                        <table class="gs-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th style="text-align: right;">Current</th>
+                                    <th style="text-align: right;">Reorder</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($dashboard['low_stock_items'] as $item): ?>
+                                    <tr>
+                                        <td>
+                                            <?= esc($item['name']) ?>
+                                            <span class="gs-unit-tag"><?= esc($item['unit_name']) ?></span>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span class="gs-stock-warn"><?= (int) $item['current_qty'] ?></span>
+                                        </td>
+                                        <td style="text-align: right;"><?= (int) $item['reorder_level'] ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="gs-empty-state">All items are well stocked. ✓</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 
 <script>

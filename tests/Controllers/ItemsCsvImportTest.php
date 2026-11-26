@@ -143,7 +143,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
         $rows = get_csv_file($tempFile);
 
         $this->assertCount(1, $rows);
-        $this->assertEquals('', $rows[0]['Id']);
+        $this->assertEquals('', $rows[0]['id']);
         $this->assertEquals('ITEM001', $rows[0]['Barcode']);
         $this->assertEquals('Test Item', $rows[0]['Item Name']);
         $this->assertEquals('Electronics', $rows[0]['Category']);
@@ -163,7 +163,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
         $rows = get_csv_file($tempFile);
 
         $this->assertCount(1, $rows);
-        $this->assertEquals('1', $rows[0]['Id']);
+        $this->assertEquals('1', $rows[0]['id']);
         $this->assertEquals('Test Item', $rows[0]['Item Name']);
 
         unlink($tempFile);
@@ -350,7 +350,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     {
         $csvData = [
             [
-                'Id' => '',
+                'id' => '',
                 'Barcode' => 'ITEM-A',
                 'Item Name' => 'First Item',
                 'Category' => 'Category A',
@@ -370,7 +370,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
                 'location_Warehouse' => '100'
             ],
             [
-                'Id' => '',
+                'id' => '',
                 'Barcode' => 'ITEM-B',
                 'Item Name' => 'Second Item',
                 'Category' => 'Category B',
@@ -393,7 +393,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
 
         foreach ($csvData as $row) {
             $itemData = [
-                'item_id' => (int)$row['Id'] ?: null,
+                'item_id' => (int)$row['id'] ?: null,
                 'name' => $row['Item Name'],
                 'description' => $row['Description'],
                 'category' => $row['Category'],
@@ -766,7 +766,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     public function testCsvImportQuantityValidationNumeric(): void
     {
         $csvData = [
-            'Id' => '',
+            'id' => '',
             'Barcode' => 'VALID-ITEM',
             'Item Name' => 'Valid Item',
             'Category' => 'Test',
@@ -824,7 +824,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     public function testFullCsvImportFlowSimulated(): void
     {
         $csvRow = [
-            'Id' => '',
+            'id' => '',
             'Barcode' => 'FULL-TEST-001',
             'Item Name' => 'Complete Test Item',
             'Category' => 'Electronics',
@@ -844,7 +844,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
         ];
 
         $itemData = [
-            'item_id' => (int)$csvRow['Id'] ?: null,
+            'item_id' => (int)$csvRow['id'] ?: null,
             'name' => $csvRow['Item Name'],
             'description' => $csvRow['Description'],
             'category' => $csvRow['Category'],
@@ -913,7 +913,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     public function testImportCsvInvalidStockLocationColumn(): void
     {
         $csvRow = [
-            'Id' => '',
+            'id' => '',
             'Item Name' => 'Test Item Invalid Location',
             'Category' => 'Test',
             'Cost Price' => '10.00',
@@ -944,7 +944,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     public function testImportCsvValidStockLocationColumn(): void
     {
         $csvRow = [
-            'Id' => '',
+            'id' => '',
             'Item Name' => 'Test Item Valid Location',
             'Category' => 'Test',
             'Cost Price' => '10.00',
@@ -974,7 +974,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     public function testImportCsvMixedValidAndInvalidLocations(): void
     {
         $csvRow = [
-            'Id' => '',
+            'id' => '',
             'Item Name' => 'Test Item Mixed Locations',
             'Category' => 'Test',
             'Cost Price' => '10.00',
@@ -1077,7 +1077,7 @@ class ItemsCsvImportTest extends CIUnitTestCase
     public function testDetectCsvLocationColumns(): void
     {
         $row = [
-            'Id' => '',
+            'id' => '',
             'Item Name' => 'Test',
             'location_Warehouse' => '100',
             'location_Store' => '50',

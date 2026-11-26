@@ -165,6 +165,7 @@ class Item extends Model
             $builder->select('MAX(items.item_id) AS item_id');
             $builder->select('MAX(items.name) AS name');
             $builder->select('MAX(items.category) AS category');
+            $builder->select('MAX(items.unit_name) AS unit_name');
             $builder->select('MAX(items.supplier_id) AS supplier_id');
             $builder->select('MAX(items.item_number) AS item_number');
             $builder->select('MAX(items.description) AS description');

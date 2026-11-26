@@ -17,7 +17,7 @@ class Home extends Secure_Controller
         $this->dashboard = model(Dashboard::class);
     }
 
-    /**
+           /**
      * Dashboard home page
      */
     public function getIndex(): string
@@ -27,9 +27,14 @@ class Home extends Secure_Controller
             'today_sales_count'    => $this->dashboard->get_today_sales_count(),
             'low_stock_count'      => $this->dashboard->get_low_stock_count(),
             'today_profit'         => $this->dashboard->get_today_profit(),
-            'today_income'          => $this->dashboard->get_today_income(),
+            'today_income'         => $this->dashboard->get_today_income(),
             'today_expenses_total' => $this->dashboard->get_today_expenses_total(),
             'total_customers'      => $this->dashboard->get_total_customers(),
+            'total_products'       => $this->dashboard->get_total_products(),
+            'total_stock_value'    => $this->dashboard->get_total_stock_value(),
+            'recent_sales'         => $this->dashboard->get_recent_sales(5),
+            'top_selling'          => $this->dashboard->get_top_selling_products(5),
+            'low_stock_items'      => $this->dashboard->get_low_stock_items(10),
         ];
 
         return view('home/home', $data);
